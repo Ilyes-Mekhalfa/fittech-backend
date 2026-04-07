@@ -6,7 +6,7 @@ import { AnnexService } from 'src/annex/annex.service';
 export class AuthenticationService {
   constructor(private annexService: AnnexService) {}
   async login(data: loginDTO) {
-    const annex = await this.annexService.findAnnex(data.code);
+    const annex = await this.annexService.findAnnex(data.annexId);
     if (!annex) {
       throw new BadRequestException('Annex does not exists');
     }
