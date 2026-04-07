@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-
+import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class AnnexService {
   constructor(private prisma: PrismaService) {}
-  async findAnnex(annexId: string) {
+  async findAnnex(annexId: any) {
     return await this.prisma.annex.findUnique({
       where: {
         id: annexId,
@@ -16,7 +16,6 @@ export class AnnexService {
       data: {
         annexName: data.annexName,
         annexId: data.annexId,
-        password: data.password,
       },
     });
   }

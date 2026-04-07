@@ -9,12 +9,12 @@ export class AuthenticationController {
 
   @Post('login')
   async login(@Body() body: loginDTO) {
-    return 1;
+    return await this.authenticationService.login(body);
   }
 
   @Post('register')
   async register(@Body() body: any){
-    return 1;
+    return await this.authenticationService.register(body);
   }
 
   @Post('logout')
