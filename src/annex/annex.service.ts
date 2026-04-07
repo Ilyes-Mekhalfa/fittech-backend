@@ -3,10 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class AnnexService {
   constructor(private prisma: PrismaService) {}
-  async findAnnex(annexId: any) {
-    return await this.prisma.annex.findUnique({
+  async findAnnex(annexId: string) {
+    return await this.prisma.annex.findFirst({
       where: {
-        id: annexId,
+        annexId,
       },
     });
   }

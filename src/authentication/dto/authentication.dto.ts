@@ -3,9 +3,9 @@ import { IsNotEmpty, MinLength } from 'class-validator';
 export class loginDTO {
   @IsNotEmpty()
   @MinLength(4)
-  readonly code: string;
+  readonly annexId: string;
 
   @IsNotEmpty()
   @MinLength(6)
-  readonly password: string;
+  readonly annexName: string;
 }

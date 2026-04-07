@@ -12,7 +12,7 @@ export class AuthenticationController {
     return await this.authenticationService.login(body);
   }
 
-  @Post('register')
+  @Post('registerAnnex')
   async register(@Body() body: any){
     return await this.authenticationService.register(body);
   }
