@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { IsNotEmpty, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 export class loginDTO {
   @IsNotEmpty()
-  @MinLength(4)
-  readonly annexId: string;
+  @IsEmail()
+  readonly email: string;
 
   @IsNotEmpty()
   @MinLength(6)
-  readonly annexName: string;
+  readonly password: string;
 }

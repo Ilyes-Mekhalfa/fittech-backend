@@ -14,7 +14,7 @@ export class AuthenticationController {
 
   @Post('registerAnnex')
   async register(@Body() body: any){
-    return await this.authenticationService.register(body);
+    // return await this.authenticationService.register(body);
   }
 
   @Post('logout')

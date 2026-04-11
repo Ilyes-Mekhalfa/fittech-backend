@@ -5,27 +5,28 @@ import { AnnexService } from 'src/annex/annex.service';
 @Injectable()
 export class AuthenticationService {
   constructor(private annexService: AnnexService) {}
+
   async login(data: loginDTO) {
-    const annex = await this.annexService.findAnnex(data.annexId);
+    const annex = await this.annexService.findAnnex(data.email);
     if (!annex) {
       throw new BadRequestException('Annex does not exists');
     }
-
+    //logic to be added later
     return annex;
   }
 
-  async register(data: any) {
-    //check if the annex admin exists
-    const exists = await this.annexService.findAnnex(data.annexId);
+  // async register(data: any) {
+  //   //check if the annex admin exists
+  //   const exists = await this.annexService.findAnnex(data.annexCode);
 
-    if (exists) {
-      throw new BadRequestException('Annex exists already');
-    }
+  //   if (exists) {
+  //     throw new BadRequestException('Annex exists already');
+  //   }
 
-    const annex = await this.annexService.createAnnex(data);
+  //   const annex = await this.annexService.createAnnex(data);
 
-    return {
-      annex,
-    };
-  }
+  //   return {
+  //     annex,
+  //   };
+  // }
 }
