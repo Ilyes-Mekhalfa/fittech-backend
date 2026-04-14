@@ -13,12 +13,22 @@ export class AuthenticationController {
   }
 
   @Post('registerAnnex')
-  async register(@Body() body: any){
-    return await this.authenticationService.register(body);
+  async register(@Body() body: any) {
+    // return await this.authenticationService.register(body);
+  }
+
+  @Post('forgetPassword')
+  async forgetPassword(@Body() body: any) {
+    return this.authenticationService.forgetPassword(body);
+  }
+
+  @Post('resetPassword')
+  async resetPassword(@Body() body: any) {
+    return this.authenticationService.resetPassword(body);
   }
 
   @Post('logout')
-  async logout(){
-    return 1;
+  async logout() {
+    //clear the cookies
   }
 }

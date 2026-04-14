@@ -1,21 +1,54 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as crypto from 'crypto';
 @Injectable()
 export class AnnexService {
   constructor(private prisma: PrismaService) {}
-  async findAnnex(annexId: string) {
-    return await this.prisma.annex.findFirst({
+  async findAnnex(email: string) {
+    return await this.prisma.annexManager.findFirst({
       where: {
-        annexId,
+        email,
       },
     });
   }
 
-  async createAnnex(data: any) {
-    return await this.prisma.annex.create({
+  // async createAnnex(data: any) {
+  //   return await this.prisma.annexManager.create({
+  //     data: {
+  //       annexName: data.annexName,
+  //     },
+  //   });
+  // }
+
+  async updateAnnex(annexCode: string, data: any) {
+    return await this.prisma.annexManager.update({
+      where: {
+        annexCode,
+      },
+      data,
+    });
+  }
+
+  async createResetToken(annexCode: string) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    await this.prisma.annexManager.update({
+      where: { annexCode },
       data: {
-        annexName: data.annexName,
-        annexId: data.annexId,
+        resetToken,
+        resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    return resetToken;
+  }
+
+  async findResetTokenAnnex(resetToken: string) {
+    return await this.prisma.annexManager.findFirst({
+      where: {
+        resetToken,
+        resetTokenExpiry: {
+          gt: new Date(),
+        },
       },
     });
   }
