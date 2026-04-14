@@ -29,28 +29,27 @@ export class AnnexService {
     });
   }
 
-  async createResetToken(annexCode: string){
-    const resetToken = crypto.randomBytes(32).toString('hex')
+  async createResetToken(annexCode: string) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
     await this.prisma.annexManager.update({
-      where: {annexCode},
+      where: { annexCode },
       data: {
         resetToken,
-        resetTokenExpiry: new Date(Date.now() + 10*60*1000),
-      }
-    })
+        resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
 
-    return resetToken
-
+    return resetToken;
   }
 
-  async findResetTokenAnnex(resetToken: string){
+  async findResetTokenAnnex(resetToken: string) {
     return await this.prisma.annexManager.findFirst({
       where: {
         resetToken,
         resetTokenExpiry: {
-          gt: new Date()
-        }
-      }
-    })
+          gt: new Date(),
+        },
+      },
+    });
   }
 }
