@@ -22,6 +22,8 @@ model AnnexManager {
   role       ROLE     @default(MANAGER)
   email      String   @unique
   password   String
+  resetToken String?
+  resetTokenExpiry DateTime?
   createdAt  DateTime @default(now())
   address    String
   phone      String

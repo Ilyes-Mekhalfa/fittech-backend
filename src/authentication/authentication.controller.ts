@@ -17,6 +17,17 @@ export class AuthenticationController {
     // return await this.authenticationService.register(body);
   }
 
+  @Post('forgetPassword')
+  async fprgetPassword(){
+    return 1
+  }
+
+  @Post('resetPassword')
+  async resetPassword(){
+    return 1
+  }
+
+
   @Post('logout')
   async logout(){
     return 1;

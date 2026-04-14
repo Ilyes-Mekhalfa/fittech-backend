@@ -6,6 +6,8 @@ import { AdminModule } from './admin/admin.module';
 import { AnnexModule } from './annex/annex.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { MailModule } from './mail/mail.module';
+import { EmailService } from './mail/mail.service';
 
 @Module({
   imports: [
@@ -16,8 +18,9 @@ import { ConfigModule } from '@nestjs/config';
     AnnexModule,
     PrismaModule,
     AdminModule,
+    MailModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, EmailService],
 })
 export class AppModule {}
