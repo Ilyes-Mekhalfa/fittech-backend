@@ -12,13 +12,11 @@ export class AnnexService {
     });
   }
 
-  // async createAnnex(data: any) {
-  //   return await this.prisma.annexManager.create({
-  //     data: {
-  //       annexName: data.annexName,
-  //     },
-  //   });
-  // }
+  async createAnnex(data: any) {
+    return await this.prisma.annexManager.create({
+      data,
+    });
+  }
 
   async updateAnnex(annexCode: string, data: any) {
     return await this.prisma.annexManager.update({
