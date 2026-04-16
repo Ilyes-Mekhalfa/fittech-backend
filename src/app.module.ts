@@ -13,6 +13,7 @@ import { EmailService } from './mail/mail.service';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
     AuthenticationModule,
     AnnexModule,
