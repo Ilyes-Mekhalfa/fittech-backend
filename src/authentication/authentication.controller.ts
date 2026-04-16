@@ -16,11 +16,11 @@ export class AuthenticationController {
     const data = await this.authenticationService.login(body);
     res.cookie('access_token', data.accessToken, {
       httpOnly: true,
-      secure: true,
+      secure: false,
       sameSite: 'strict',
     });
 
-    return { message: 'Login successful', annex: data.annex };
+    return { annex: data.annex };
   }
 
   @Post('registerAnnex')
