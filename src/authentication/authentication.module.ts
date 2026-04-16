@@ -7,14 +7,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AnnexService } from 'src/annex/annex.service';
 import { EmailService } from 'src/mail/mail.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { AnnexModule } from 'src/annex/annex.module';
 
 @Module({
   imports: [
+    AnnexModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const jwtSecret = config.get<string>('ACCESS_TOKEN');
-        console.log('JWT Secret loaded:', jwtSecret ? 'YES' : 'NO', jwtSecret);
         if (!jwtSecret) {
           throw new Error('JWT secret is not configured (ACCESS_TOKEN)');
         }

@@ -41,6 +41,7 @@ export class AuthenticationService {
       {
         annexCode: annex.annexCode,
         annexName: annex.annexName,
+        role: annex.role,
       },
       { secret: this.config.get<string>('ACCESS_TOKEN') },
     );

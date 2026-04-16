@@ -50,4 +50,12 @@ export class AnnexService {
       },
     });
   }
+
+  async findAnnexByCode(annexCode: string) {
+    return await this.prisma.annexManager.findUnique({
+      where: {
+        annexCode,
+      },
+    });
+  }
 }
