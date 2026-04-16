@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as crypto from 'crypto';
 @Injectable()
@@ -19,6 +19,17 @@ export class AnnexService {
   }
 
   async updateAnnex(annexCode: string, data: any) {
+    //check if the annex exists
+    const exists = await this.prisma.annexManager.findUnique({
+      where: {
+        annexCode,
+      },
+    });
+
+    if (!exists) {
+      throw new BadRequestException('Annex does not exists');
+    }
+    //validate data to be done later
     return await this.prisma.annexManager.update({
       where: {
         annexCode,
@@ -27,6 +38,23 @@ export class AnnexService {
     });
   }
 
+  async deleteAnnex(annexCode: string) {
+    //check if the annex exists
+    const exists = await this.prisma.annexManager.findUnique({
+      where: {
+        annexCode,
+      },
+    });
+
+    if (!exists) {
+      throw new BadRequestException('Annex does not exists');
+    }
+    return await this.prisma.annexManager.delete({
+      where: {
+        annexCode,
+      },
+    });
+  }
   async createResetToken(annexCode: string) {
     const resetToken = crypto.randomBytes(32).toString('hex');
     await this.prisma.annexManager.update({
