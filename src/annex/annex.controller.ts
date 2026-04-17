@@ -9,7 +9,7 @@ import {
 import { AnnexService } from './annex.service';
 import { CurrentAnnex } from 'src/common/decorators/current-annex.decorator';
 import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/role.guard';
+import { Role } from 'src/common/decorators/role.decorator';
 @Controller('annex')
 export class AnnexController {
   constructor(private annexService: AnnexService) {}
@@ -26,7 +26,7 @@ export class AnnexController {
 
   @Delete('deleteAnnex')
   @UseGuards(JwtAuthGuard)
-  @ RolesGuard('ADMIN')
+  @Role('ADMIN')
   async deleteAnnex(@CurrentAnnex() currentAnnex: any) {
     return await this.annexService.deleteAnnex(currentAnnex.annexCode);
   }

@@ -19,8 +19,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req) => {
-          console.log(req?.cookies);
-          
           return req?.cookies?.access_token || null;
         },
       ]),
@@ -29,9 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    console.log('JWT payload:', payload);
     const annex = await this.annexService.findAnnexByCode(payload.annexCode);
-    console.log('Found annex:', annex);
     return annex;
   }
 }
