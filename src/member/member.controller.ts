@@ -26,6 +26,11 @@ export class MemberController {
         return await this.memberService.updateMember(id, body)
     }
 
+    @Patch('archiveMember/:id')
+    async archiveMember(@Param('id')id: any){
+        return await this.memberService.archiveMember(id)
+    }
+
     @Delete('deleteMember/:id')
     async deleteMember(@Param('id')id: any ){
         return await this.memberService.deleteMember(id)    
