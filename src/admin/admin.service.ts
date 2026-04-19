@@ -99,7 +99,7 @@ export class AdminService {
           action: 'USER_ARCHIVED',
           targetId: user.id,
           performedBy: 'system',
-          metadata: {
+          metadata : {
             reason: 'Inactive for 1 year',
             lastLoginAt: user.lastLoginAt ?? 'never',
             trigger: 'monthly_batch',
