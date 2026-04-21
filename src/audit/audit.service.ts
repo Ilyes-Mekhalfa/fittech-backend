@@ -1,8 +1,4 @@
-// audit/audit.service.ts
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuditLog } from './audit-log.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -10,20 +6,21 @@ export class AuditService {
     constructor(private prismaService: PrismaService) { }
 
     async createAuditLog(data: {
-        action: string;
-        targetId: string;
-        performedBy: string;
-        metaData?:any
+        action: "USER_ARCHIVED" | "PAYMENT_RECIVED";
+        user_id: string;
+        performedBy: "SYSTEM" | "ADMIN";
+        metadata?: any,
+        status: "SUCCESS" | "FAIL"
     }) {
-        return await this.prismaService.audit_log.create({
-            ...data,
-            metaData: JSON.stringify(data.metaData),
-            createdAt: new Date(),
+        return await this.prismaService.django_admin_log.create({
+            data:{
+                ...data
+            }
         });
     }
 
     async getAuditLogs() {
-        return await this.prismaService.audit_log.findMany({ order: { createdAt: 'DESC' } })
+        return await this.prismaService.django_admin_log.findMany({ orderBy: { action_time: 'desc' } })
 
     }
 }

@@ -16,7 +16,7 @@ export class AdminService {
     async getActiveUsers() {
         return await this.prismaService.fitapi_user.findMany({
             where: {
-                isArchived: false,
+                is_active: false,
             }
         })
     }
@@ -24,7 +24,7 @@ export class AdminService {
     async getArchivedUsers() {
         return await this.prismaService.fitapi_user.findMany({
             where: {
-                isArchived: true
+                is_active: true
             }
         })
     }
@@ -37,7 +37,7 @@ export class AdminService {
             }
         })
 
-        if (user.isArchived) {
+        if (user.is_active) {
             throw new BadRequestException('user is already archived')
         }
 
@@ -46,8 +46,8 @@ export class AdminService {
                 id
             },
             data: {
-                isArchived: true,
-                archivedAt: new Date(),
+                is_active: true,
+                archived_at: new Date(),
             }
         })
 
@@ -62,14 +62,14 @@ export class AdminService {
 
     const inactiveUsers = await this.prismaService.fitapi_user.findMany({
       where: {
-        isArchived: false,
+        is_active: false,
         OR: [
           {
-            lastLoginAt: null,
-            createdAt: { lt: cutoffDate },
+            last_login: null,
+            created_at: { lt: cutoffDate },
           },
            {
-            lastLoginAt: { lt: cutoffDate },
+            last_login: { lt: cutoffDate },
           },
         ],
       },
@@ -88,20 +88,19 @@ export class AdminService {
         await this.prismaService.fitapi_user.update({
           where: { id: user.id },
           data: {
-            isArchived: true,
-            archivedAt: new Date(),
-            archiveReason: 'Automated: No login activity for over 1 year',
-            archivedBy: 'system',
+            is_active: true,
+            archived_at: new Date(),
           },
         });
 
         await this.auditService.createAuditLog({
           action: 'USER_ARCHIVED',
-          targetId: user.id,
-          performedBy: 'system',
+          user_id: user.id,
+          performedBy: 'SYSTEM',
+          status: 'SUCCESS',
           metadata : {
-            reason: 'Inactive for 1 year',
-            lastLoginAt: user.lastLoginAt ?? 'never',
+            message: 'Inactive for 1 year',
+            last_login: user.last_login ?? 'never',
             trigger: 'monthly_batch',
           },
         });
@@ -123,7 +122,7 @@ export class AdminService {
             }
         })
 
-        if (!user.isArchived) {
+        if (!user.is_active) {
             throw new BadRequestException('user is not archived')
         }
 
@@ -132,8 +131,8 @@ export class AdminService {
                 id
             },
             data: {
-                isArchived: false,
-                archivedAt: null,
+                is_active: false,
+                archived_at: undefined,
             }
         })
 
