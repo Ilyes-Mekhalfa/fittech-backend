@@ -33,7 +33,9 @@ export class CoachService {
                 role: 'COACH',
                 phone: data.phone,
                 is_active: true,
-                created_at: new Date()
+                created_at: new Date(),
+                is_superuser: false,
+                is_staff: false,
             },
             select: {
                 id: true

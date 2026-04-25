@@ -32,7 +32,9 @@ export class MemberService {
                 role: 'Member',
                 phone: data.phone,
                 is_active: true,
-                created_at: new Date()
+                created_at: new Date(),
+                is_superuser: false,
+                is_staff: false,
             },
             select: {
                 id: true
@@ -75,7 +77,6 @@ export class MemberService {
                     omit: {
                         password: true,
                         is_active: true,
-                        created_at: true,
                         last_login: true,
                         role: true
 

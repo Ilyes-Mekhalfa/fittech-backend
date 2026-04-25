@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 export class AnnexService {
   constructor(private prisma: PrismaService) {}
   async findAnnex(email: string) {
-    return await this.prisma.annexManager.findFirst({
+    return await this.prisma.fitapi_user.findFirst({
       where: {
         email,
       },
@@ -13,16 +13,16 @@ export class AnnexService {
   }
 
   async createAnnex(data: any) {
-    return await this.prisma.annexManager.create({
+    return await this.prisma.fitapi_user.create({
       data,
     });
   }
 
-  async updateAnnex(annexCode: string, data: any) {
+  async updateAnnex(id: string, data: any) {
     //check if the annex exists
-    const exists = await this.prisma.annexManager.findUnique({
+    const exists = await this.prisma.fitapi_user.findUnique({
       where: {
-        annexCode,
+        id,
       },
     });
 
@@ -30,59 +30,59 @@ export class AnnexService {
       throw new BadRequestException('Annex does not exists');
     }
     //validate data to be done later
-    return await this.prisma.annexManager.update({
+    return await this.prisma.fitapi_user.update({
       where: {
-        annexCode,
+        id,
       },
       data,
     });
   }
 
-  async deleteAnnex(annexCode: string) {
+  async deleteAnnex(id: string) {
     //check if the annex exists
-    const exists = await this.prisma.annexManager.findUnique({
+    const exists = await this.prisma.fitapi_user.findUnique({
       where: {
-        annexCode,
+        id,
       },
     });
 
     if (!exists) {
       throw new BadRequestException('Annex does not exists');
     }
-    return await this.prisma.annexManager.delete({
+    return await this.prisma.fitapi_user.delete({
       where: {
-        annexCode,
+        id,
       },
     });
   }
-  async createResetToken(annexCode: string) {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    await this.prisma.annexManager.update({
-      where: { annexCode },
-      data: {
-        resetToken,
-        resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
-      },
-    });
+  // async createResetToken(id: string) {
+  //   const resetToken = crypto.randomBytes(32).toString('hex');
+  //   await this.prisma.fitapi_user.update({
+  //     where: { id },
+  //     data: {
+  //       resetToken,
+  //       resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+  //     },
+  //   });
 
-    return resetToken;
-  }
+  //   return resetToken;
+  // }
 
-  async findResetTokenAnnex(resetToken: string) {
-    return await this.prisma.annexManager.findFirst({
+  // async findResetTokenAnnex(resetToken: string) {
+  //   return await this.prisma.fitapi_user.findFirst({
+  //     where: {
+  //       resetToken,
+  //       resetTokenExpiry: {
+  //         gt: new Date(),
+  //       },
+  //     },
+  //   });
+  // }
+
+  async findAnnexByCode(id: string) {
+    return await this.prisma.fitapi_user.findUnique({
       where: {
-        resetToken,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-    });
-  }
-
-  async findAnnexByCode(annexCode: string) {
-    return await this.prisma.annexManager.findUnique({
-      where: {
-        annexCode,
+        id,
       },
     });
   }

@@ -8,28 +8,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum ROLE {
-  ADMIN
-  MANAGER
-  COACH
-  MEMBER
-}
-
-enum LOG_ACTION {
-  USER_ARCHIVED
-  PAYMENT_RECIVED
-}
-
-enum LOG_PERFORMED {
-  SYSTEM
-  ADMIN
-}
-
-enum STATUS {
-  SUCCESS
-  FAIL
-}
-
 model auth_group {
   id                     Int                      @id @default(autoincrement())
   name                   String                   @unique @db.VarChar(150)
@@ -67,17 +45,19 @@ model auth_permission {
 }
 
 model django_admin_log {
-  id                    Int                  @id @default(autoincrement())
-  action_time           DateTime             @default(now())
-  action                LOG_ACTION
-  status                STATUS
-  performedBy           LOG_PERFORMED
-  user_id               String               @db.Uuid
-  metadata              Json?                @db.JsonB
-  djangoContentType     django_content_type? @relation(fields: [django_content_typeId], references: [id])
-  django_content_typeId Int?
-  fitapiUser            fitapi_user?         @relation(fields: [fitapi_userId], references: [id])
-  fitapi_userId         String?              @db.Uuid
+  id                  Int                  @id @default(autoincrement())
+  action_time         DateTime             @db.Timestamptz(6)
+  object_id           String?
+  object_repr         String               @db.VarChar(200)
+  action_flag         Int                  @db.SmallInt
+  change_message      String
+  content_type_id     Int?
+  user_id             String               @db.Uuid
+  django_content_type django_content_type? @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_content_type_id_c4bce8eb_fk_django_co")
+  fitapi_user         fitapi_user          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_user_id_c564eba6_fk_fitapi_user_id")
+
+  @@index([content_type_id], map: "django_admin_log_content_type_id_c4bce8eb")
+  @@index([user_id], map: "django_admin_log_user_id_c564eba6")
 }
 
 model django_content_type {
@@ -184,6 +164,7 @@ model fitapi_subscriptionplan {
 model fitapi_user {
   password                         String                             @db.VarChar(128)
   last_login                       DateTime?                          @db.Timestamptz(6)
+  is_superuser                     Boolean
   id                               String                             @id @db.Uuid
   first_name                       String                             @db.VarChar(100)
   last_name                        String                             @db.VarChar(100)
@@ -193,10 +174,12 @@ model fitapi_user {
   profile_photo                    String?                            @db.VarChar(100)
   created_at                       DateTime                           @db.Timestamptz(6)
   is_active                        Boolean
-  archived_at                      DateTime?
+  is_staff                         Boolean
+  archived_at                      DateTime?                          @db.Timestamptz(6)
   django_admin_log                 django_admin_log[]
   fitapi_coach                     fitapi_coach?
   fitapi_membre                    fitapi_membre?
+  fitapi_passwordresettoken        fitapi_passwordresettoken[]
   fitapi_user_groups               fitapi_user_groups[]
   fitapi_user_user_permissions     fitapi_user_user_permissions[]
   token_blacklist_outstandingtoken token_blacklist_outstandingtoken[]
@@ -253,20 +236,15 @@ model token_blacklist_outstandingtoken {
   @@index([user_id], map: "token_blacklist_outstandingtoken_user_id_83bc629a")
 }
 
-//manager model
-model AnnexManager {
-  id               Int       @id @default(autoincrement())
-  annexName        String    @default("annex")
-  annexCode        String    @unique
-  role             ROLE      @default(MANAGER)
-  email            String    @unique
-  password         String
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  createdAt        DateTime  @default(now())
-  address          String
-  phone            String
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_passwordresettoken {
+  id          BigInt      @id @default(autoincrement())
+  token       String      @unique @db.VarChar(64)
+  created_at  DateTime    @db.Timestamptz(6)
+  is_used     Boolean
+  user_id     String      @db.Uuid
+  fitapi_user fitapi_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_passwordresettoken_user_id_98e2b204_fk_fitapi_user_id")
 
-  // coaches       Coach[]
-  // members       Member[]
+  @@index([token], map: "fitapi_passwordresettoken_token_9d82e61e_like")
+  @@index([user_id], map: "fitapi_passwordresettoken_user_id_98e2b204")
 }
