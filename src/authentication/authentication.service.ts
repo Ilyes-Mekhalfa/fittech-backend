@@ -27,25 +27,24 @@ export class AuthenticationService {
     }
     //logic to be added later
 
-    const correct: boolean = await bcrypt.compare(
-      data.password,
-      annex.password,
-    );
+    // const correct: boolean = await bcrypt.compare(
+    //   data.password,
+    //   annex.password,
+    // );
 
-    if (!correct) {
-      throw new BadRequestException('Invalid credentials');
-    }
-    const { password, resetToken, resetTokenExpiry, ...safeAnnex } = annex;
+    // if (!correct) {
+    //   throw new BadRequestException('Invalid credentials');
+    // }
     //add token
-    const accessToken = this.jwtService.sign(
-      {
-        annexCode: annex.annexCode,
-        annexName: annex.annexName,
-        role: annex.role,
-      },
-      { secret: this.config.get<string>('ACCESS_TOKEN') },
-    );
-    return { annex: safeAnnex, accessToken };
+    // const accessToken = this.jwtService.sign(
+    //   {
+    //     annexCode: '222',
+    //     annexName: annex.first_name,
+    //     role: annex.role,
+    //   },
+    //   { secret: this.config.get<string>('ACCESS_TOKEN') },
+    // );
+    return { annex };
   }
 
   async register(data: registerDTO) {
@@ -64,71 +63,83 @@ export class AuthenticationService {
     const annex = await this.annexService.createAnnex(registerData);
 
     //add token
-    const accessToken = this.jwtService.sign(
-      {
-        annexCode: annex.annexCode,
-        annexName: annex.annexName,
-      },
-      { secret: this.config.get<string>('ACCESS_TOKEN') },
-    );
+    // const accessToken = this.jwtService.sign(
+    //   {
+    //     annexCode: annex.annexCode,
+    //     annexName: annex.annexName,
+    //   },
+    //   { secret: this.config.get<string>('ACCESS_TOKEN') },
+    // );
     return {
       annex,
-      accessToken,
+      // accessToken,
     };
   }
 
-  async forgetPassword(data: forgetPasswordDTO) {
-    //check if the annex exists
-    const annex = await this.annexService.findAnnex(data.email);
+  // async forgetPassword(data: forgetPasswordDTO) {
+  //   //check if the annex exists
+  //   const annex = await this.annexService.findAnnex(data.email);
 
-    if (!annex) {
-      throw new BadRequestException('annex does not exists');
-    }
+  //   if (!annex) {
+  //     throw new BadRequestException('annex does not exists');
+  //   }
 
-    //generate reset token
-    const resetToken = await this.annexService.createResetToken(
-      annex.annexCode,
-    );
+  //   //generate reset token
+  //   // const resetToken = await this.annexService.createResetToken(
+  //   //   annex.annexCode,
+  //   // );
 
-    //send email to the manager
+  //   //send email to the manager
 
-    const link = `${this.config.get('BASE_URL')}/reset-password?token=${resetToken}`;
-    await this.emailService.sendPasswordResetEmail(annex.email, link);
+  //   const link = `${this.config.get('BASE_URL')}/reset-password?token=${resetToken}`;
+  //   await this.emailService.sendPasswordResetEmail(annex.email, link);
 
-    return {
-      message: ' email sent to the manager',
-    };
-  }
+  //   return {
+  //     message: ' email sent to the manager',
+  //   };
+  // }
 
-  async resetPassword(data: resetPasswordDTO) {
-    //get the annex
-    const annex = await this.annexService.findResetTokenAnnex(data.resetToken);
+  // async resetPassword(data: resetPasswordDTO) {
+  //   //get the annex
+  //   const annex = await this.annexService.findResetTokenAnnex(data.resetToken);
 
-    if (!annex) {
-      {
-        throw new BadRequestException('annex does not exists');
-      }
-    }
+  //   if (!annex) {
+  //     {
+  //       throw new BadRequestException('annex does not exists');
+  //     }
+  //   }
 
-    //check the passwords matches
-    //to be deleted once validation is implemented
-    if (!data.password || !data.confirmPassword) {
-      throw new BadRequestException(
-        'password and confirm Password are not matched',
-      );
-    }
+  //   //check the passwords matches
+  //   //to be deleted once validation is implemented
+  //   if (!data.password || !data.confirmPassword) {
+  //     throw new BadRequestException(
+  //       'password and confirm Password are not matched',
+  //     );
+  //   }
 
-    //update password
-    const password: string = await bcrypt.hash(data.password, 11);
+  //   //update password
+  //   const password: string = await bcrypt.hash(data.password, 11);
 
-    await this.annexService.updateAnnex(annex.annexCode, {
-      password,
-      resetToken: null,
-      resetTokenExpiry: null,
-    });
+  //   await this.annexService.updateAnnex(annex.annexCode, {
+  //     password,
+  //     resetToken: null,
+  //     resetTokenExpiry: null,
+  //   });
 
-    return {
-      message: 'password reset successfully',
-    };
+  //   return {
+  //     message: 'password reset successfully',
+  //   };
+  // }
+
+  async createToken(data: any) {
+    const accessToken = this.jwtService.sign({
+      user_id: data.user_id,
+      
+    }, { expiresIn: '15m' });
+
+    const refreshToken = this.jwtService.sign({
+      user_id: data.user_id,
+    }, { expiresIn: '7d' });
+    return {accessToken, refreshToken};
   }
 }

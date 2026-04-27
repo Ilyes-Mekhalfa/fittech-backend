@@ -12,6 +12,8 @@ import { CoachModule } from './coach/coach.module';
 import { MemberModule } from './member/member.module';
 import { AuditService } from './audit/audit.service';
 import { AuditModule } from './audit/audit.module';
+import { PlanService } from './plan/plan.service';
+import { PlanModule } from './plan/plan.module';
 
 @Module({
   imports: [
@@ -27,8 +29,9 @@ import { AuditModule } from './audit/audit.module';
     CoachModule,
     MemberModule,
     AuditModule,
+    PlanModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EmailService, AuditService],
+  providers: [AppService, EmailService, AuditService, PlanService],
 })
 export class AppModule {}

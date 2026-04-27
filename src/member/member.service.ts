@@ -31,10 +31,10 @@ export class MemberService {
                 last_name: data.last_name,
                 role: 'Member',
                 phone: data.phone,
+                is_active: true,
+                created_at: new Date(),
                 is_superuser: false,
                 is_staff: false,
-                is_active: true,
-                created_at: new Date()
             },
             select: {
                 id: true
@@ -56,8 +56,6 @@ export class MemberService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
                         created_at: true,
                         last_login: true,
@@ -78,10 +76,7 @@ export class MemberService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
-                        created_at: true,
                         last_login: true,
                         role: true
 
@@ -103,8 +98,6 @@ export class MemberService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
                         created_at: true,
                         last_login: true,
