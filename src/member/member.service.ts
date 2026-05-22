@@ -67,6 +67,11 @@ export class MemberService {
 
   async getAllMembers() {
     return await this.prismaService.fitapi_membre.findMany({
+      where: {
+        fitapi_user: {
+          is_active: true,
+        },
+      },
       omit: {
         user_id: true,
       },
@@ -83,7 +88,7 @@ export class MemberService {
     });
   }
 
-  async getMember(id: any) {
+  async getMember(id: string) {
     return await this.prismaService.fitapi_membre.findUnique({
       where: {
         id,
@@ -105,7 +110,7 @@ export class MemberService {
     });
   }
 
-  async updateMember(id: any, body: any) {
+  async updateMember(id: string, body: any) {
     return await this.prismaService.fitapi_user.update({
       where: {
         id,
@@ -116,20 +121,18 @@ export class MemberService {
     });
   }
 
-  async archiveMember(id: any) {
-    // await this.prismaService.fitapi_user.update({
-    //     where: {
-    //         id
-    //     },
-    //     data: {
-    //         is_active: false,
-    //     }
-    // })
-    // return await this.prismaService.fitapi_archive.create({
-    //     data: {
-    //         user_id: id,
-    //     }
-    // })
+  async archiveMember(id: string) {
+    await this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        is_active: false,
+        archived_at: new Date(),
+      },
+    });
+
+    return true;
   }
   async deleteMember(id: string) {
     // check if the member exists
