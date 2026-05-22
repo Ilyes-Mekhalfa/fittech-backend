@@ -3,195 +3,227 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 @Injectable()
 export class MemberService {
+  constructor(private prismaService: PrismaService) {}
 
-    constructor(private prismaService: PrismaService) { }
-
-    async addMember(body: any) {
-        const data = body
-        //check if the user exists
-        const exists = await this.prismaService.fitapi_user.findUnique({
-            where: {
-                email: data.email
-            }
-        })
-        if(exists){
-            throw new BadRequestException('mamber exists already')
-        }
-
-        //validate Data
-        //to be done later
-
-        //create member
-        const user =await this.prismaService.fitapi_user.create({
-            data: {
-                id: randomUUID(),
-                email: data.email,
-                password: data.password,
-                first_name: data.first_name,
-                last_name: data.last_name,
-                role: 'Member',
-                phone: data.phone,
-                is_active: true,
-                created_at: new Date(),
-                is_superuser: false,
-                is_staff: false,
-            },
-            select: {
-                id: true
-            }
-        })
-        return await this.prismaService.fitapi_membre.create({
-            data: {
-                id: randomUUID(),
-                join_date: new Date(),
-                user_id: user.id,
-                date_of_birth: data.date_of_birth,
-                health_goal: data.health_goal,
-                medical_restrictions: data.medical_restrictions,
-            },
-            omit: {
-                user_id: true
-            },
-            include: {
-                fitapi_user: {
-                    omit: {
-                        password: true,
-                        is_active: true,
-                        created_at: true,
-                        last_login: true,
-                        role: true
-
-                    }
-                }
-            }
-        })
+  async addMember(body: any) {
+    const data = body;
+    //check if the user exists
+    const exists = await this.prismaService.fitapi_user.findUnique({
+      where: {
+        email: data.email,
+      },
+    });
+    if (exists) {
+      throw new BadRequestException('mamber exists already');
     }
 
-    async getAllMembers() {
-        return await this.prismaService.fitapi_membre.findMany({
-            omit: {
-                user_id: true
-            },
-            include: {
-                fitapi_user: {
-                    omit: {
-                        password: true,
-                        is_active: true,
-                        last_login: true,
-                        role: true
+    //validate Data
+    //to be done later
 
-                    }
-                }
-            }
-    })
+    //create member
+    const user = await this.prismaService.fitapi_user.create({
+      data: {
+        id: randomUUID(),
+        email: data.email,
+        password: data.password,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: 'Member',
+        phone: data.phone,
+        is_active: true,
+        created_at: new Date(),
+        is_superuser: false,
+        is_staff: false,
+      },
+      select: {
+        id: true,
+      },
+    });
+    return await this.prismaService.fitapi_membre.create({
+      data: {
+        id: randomUUID(),
+        join_date: new Date(),
+        user_id: user.id,
+        date_of_birth: data.date_of_birth,
+        health_goal: data.health_goal,
+        medical_restrictions: data.medical_restrictions,
+      },
+      omit: {
+        user_id: true,
+      },
+      include: {
+        fitapi_user: {
+          omit: {
+            password: true,
+            is_active: true,
+            created_at: true,
+            last_login: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getAllMembers() {
+    return await this.prismaService.fitapi_membre.findMany({
+      where: {
+        fitapi_user: {
+          is_active: true,
+        },
+      },
+      omit: {
+        user_id: true,
+      },
+      include: {
+        fitapi_user: {
+          omit: {
+            password: true,
+            is_active: true,
+            last_login: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getMember(id: string) {
+    return await this.prismaService.fitapi_membre.findUnique({
+      where: {
+        id,
+      },
+      omit: {
+        user_id: true,
+      },
+      include: {
+        fitapi_user: {
+          omit: {
+            password: true,
+            is_active: true,
+            created_at: true,
+            last_login: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateMember(id: string, body: any) {
+    return await this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        ...body,
+      },
+    });
+  }
+
+  async archiveMember(id: string) {
+    await this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        is_active: false,
+        archived_at: new Date(),
+      },
+    });
+
+    return true;
+  }
+  async deleteMember(id: string) {
+    // check if the member exists
+    const member = await this.prismaService.fitapi_membre.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        user_id: true,
+      },
+    });
+
+    if (!member) {
+      throw new BadRequestException('member does not exist');
     }
 
-    async getMember(id: any) {
-        return await this.prismaService.fitapi_membre.findUnique({
-            where: {
-                id
-            },
-            omit: {
-                user_id: true
-            },
-            include: {
-                fitapi_user: {
-                    omit: {
-                        password: true,
-                        is_active: true,
-                        created_at: true,
-                        last_login: true,
-                        role: true
+    const userId = member.user_id;
 
-                    }
-                }
-            }
-        })
-    }
+    // Deletion order: child records first, then parent records
+    // 1. Delete payments (references both membre and membresubscription)
+    await this.prismaService.fitapi_payment.deleteMany({
+      where: {
+        membre_id: id,
+      },
+    });
 
-    async updateMember(id: any, body: any) {
-        return await this.prismaService.fitapi_user.update({
-            where: {
-                id
-            },
-            data: {
-                ...body
-            }
-        })
-    }
+    // 2. Delete subscriptions (references membre)
+    await this.prismaService.fitapi_membresubscription.deleteMany({
+      where: {
+        membre_id: id,
+      },
+    });
 
-    async archiveMember(id: any){
-        // await this.prismaService.fitapi_user.update({
-        //     where: {
-        //         id
-        //     },
-        //     data: {
-        //         is_active: false,
-        //     }
-        // })
+    // 3. Delete membre record
+    await this.prismaService.fitapi_membre.delete({
+      where: {
+        id,
+      },
+    });
 
-        // return await this.prismaService.fitapi_archive.create({
-        //     data: {
-        //         user_id: id,
-                
-        //     }
-        // })
+    // 4. Delete user groups
+    await this.prismaService.fitapi_user_groups.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
 
-    }
-    async deleteMember(id: any) {
+    // 5. Delete user permissions
+    await this.prismaService.fitapi_user_user_permissions.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
 
-        //check if the member exists
-        const user_id =  await this.prismaService.fitapi_membre.findUnique({
-            where: {
-                id
-            },
-            select: {
-                user_id: true
-            }
-        })
-        
-        if(!user_id){
-            throw new BadRequestException('user doe not exists')
-        }
- 
-        //delete member
-        await this.prismaService.fitapi_membre.delete({
-            where: {
-                id
-            }
-        })
+    // 6. Delete password reset tokens
+    await this.prismaService.fitapi_passwordresettoken.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
 
-        // await this.prismaService.fitapi_membresubscription.delete({
-        //     where: {
-        //         id
-        //     }
-        // })
+    // 7. Delete blacklisted tokens (delete blacklisted first, then outstanding)
+    await this.prismaService.token_blacklist_blacklistedtoken.deleteMany({
+      where: {
+        token_blacklist_outstandingtoken: {
+          user_id: userId,
+        },
+      },
+    });
 
-        // await this.prismaService.fitapi_user_groups.deleteMany({
-        //     where: {
-        //         user_id: user_id?.user_id
-        //     }
-        // })
+    // 8. Delete outstanding tokens
+    await this.prismaService.token_blacklist_outstandingtoken.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
 
-        //delete token
-        // await this.prismaService.token_blacklist_blacklistedtoken.deleteMany({
-        //     where: {
-        //         user_id: user_id?.user_id
-        //     }
-        // })
-        // await this.prismaService.token_blacklist_outstandingtoken.deleteMany({
-        //     where: {
-        //         user_id: user_id?.user_id
-        //     }
-        // })
+    // 9. Delete admin logs
+    await this.prismaService.django_admin_log.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
 
-        //delete user
-        await this.prismaService.fitapi_user.delete({
-            where: {
-                id: user_id?.user_id
-            }
-        })
+    // 11. Delete user
+    await this.prismaService.fitapi_user.delete({
+      where: {
+        id: userId,
+      },
+    });
 
-        return true
-    }
+    return true;
+  }
 }
