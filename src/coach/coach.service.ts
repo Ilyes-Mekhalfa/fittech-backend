@@ -32,18 +32,17 @@ export class CoachService {
                 last_name: data.last_name,
                 role: 'COACH',
                 phone: data.phone,
+                is_active: true,
+                created_at: new Date(),
                 is_superuser: false,
                 is_staff: false,
-                is_active: true,
-                created_at: new Date()
             },
             select: {
                 id: true
             }
         })
 
-        console.log(user);
-        
+
         //add the coach to the db
         const coach = await this.prismaService.fitapi_coach.create({
             data: {
@@ -54,7 +53,7 @@ export class CoachService {
                 years_of_experience: data.years_of_experience,
                 is_active: true
             },
-            omit:{
+            omit: {
                 user_id: true,
                 is_active: true
             },
@@ -62,13 +61,11 @@ export class CoachService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
                         created_at: true,
                         last_login: true,
                         role: true
-                        
+
                     }
                 }
             }
@@ -79,7 +76,7 @@ export class CoachService {
 
     async getAllCoach() {
         return await this.prismaService.fitapi_coach.findMany({
-            omit:{
+            omit: {
                 user_id: true,
                 is_active: true
             },
@@ -87,8 +84,6 @@ export class CoachService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
                         created_at: true,
                         last_login: true,
@@ -106,7 +101,7 @@ export class CoachService {
             where: {
                 id
             },
-            omit:{
+            omit: {
                 user_id: true,
                 is_active: true
             },
@@ -114,8 +109,6 @@ export class CoachService {
                 fitapi_user: {
                     omit: {
                         password: true,
-                        is_superuser: true,
-                        is_staff: true,
                         is_active: true,
                         created_at: true,
                         last_login: true,
@@ -136,29 +129,12 @@ export class CoachService {
             }
         })
 
-        return await this.prismaService.fitapi_coach.update({
+        return await this.prismaService.fitapi_user.update({
             where: {
                 id
             },
             data: {
                 ...body
-            },
-            omit:{
-                user_id: true,
-                is_active: true
-            },
-            include: {
-                fitapi_user: {
-                    omit: {
-                        password: true,
-                        is_superuser: true,
-                        is_staff: true,
-                        is_active: true,
-                        created_at: true,
-                        last_login: true,
-                        role: true,
-                    }
-                }
             }
         })
     }

@@ -14,11 +14,11 @@ export class AuthenticationController {
   ) {
     //adding cookies to the response
     const data = await this.authenticationService.login(body);
-    res.cookie('access_token', data.accessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'strict',
-    });
+    // res.cookie('access_token', data.accessToken, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   sameSite: 'strict',
+    // });
 
     return { annex: data.annex };
   }
@@ -26,30 +26,30 @@ export class AuthenticationController {
   @Post('registerAnnex')
   async register(@Body() body: any, @Res({passthrough: true}) res: Response) {
     const data =await this.authenticationService.register(body)
-    res.cookie('access_token', data.accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-    });
+    // res.cookie('access_token', data.accessToken, {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'strict',
+    // });
     return data;
   }
 
-  @Post('forgetPassword')
-  async forgetPassword(@Body() body: any) {
-    return this.authenticationService.forgetPassword(body);
-  }
+  // @Post('forgetPassword')
+  // async forgetPassword(@Body() body: any) {
+  //   return this.authenticationService.forgetPassword(body);
+  // }
 
-  @Post('resetPassword')
-  async resetPassword(
-    @Body() body: any,
-    @Query('reset_token') resetToken: string,
-  ) {
-    const data: resetPasswordDTO = { ...body, resetToken };
-    return this.authenticationService.resetPassword(data);
-  }
+  // @Post('resetPassword')
+  // async resetPassword(
+  //   @Body() body: any,
+  //   @Query('reset_token') resetToken: string,
+  // ) {
+  //   const data: resetPasswordDTO = { ...body, resetToken };
+  //   return this.authenticationService.resetPassword(data);
+  // }
 
-  @Post('logout')
-  async logout() {
-    //clear the cookies
-  }
+  // @Post('logout')
+  // async logout() {
+  //   //clear the cookies
+  // }
 }

@@ -9,6 +9,11 @@ import { ConfigModule } from '@nestjs/config';
 import { MailModule } from './mail/mail.module';
 import { EmailService } from './mail/mail.service';
 import { CoachModule } from './coach/coach.module';
+import { MemberModule } from './member/member.module';
+import { AuditService } from './audit/audit.service';
+import { AuditModule } from './audit/audit.module';
+import { PlanService } from './plan/plan.service';
+import { PlanModule } from './plan/plan.module';
 
 @Module({
   imports: [
@@ -22,8 +27,11 @@ import { CoachModule } from './coach/coach.module';
     AdminModule,
     MailModule,
     CoachModule,
+    MemberModule,
+    AuditModule,
+    PlanModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EmailService],
+  providers: [AppService, EmailService, AuditService, PlanService],
 })
 export class AppModule {}

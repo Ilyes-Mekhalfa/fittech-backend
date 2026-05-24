@@ -30,4 +30,14 @@ export class AnnexController {
   async deleteAnnex(@CurrentAnnex() currentAnnex: any) {
     return await this.annexService.deleteAnnex(currentAnnex.annexCode);
   }
+
+  @Get('allMembers')
+  @UseGuards(JwtAuthGuard)
+  @Role('MANAGER')
+  async getAnnexMmeber(){}
+
+  @Get('allCoachs')
+  @UseGuards(JwtAuthGuard)
+  @Role('MANAGER')
+  async getAnnexCoach(){}
 }
