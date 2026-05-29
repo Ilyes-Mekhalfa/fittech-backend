@@ -14,6 +14,7 @@ import { AuditService } from './audit/audit.service';
 import { AuditModule } from './audit/audit.module';
 import { PlanService } from './plan/plan.service';
 import { PlanModule } from './plan/plan.module';
+import { MachineModule } from './machine/machine.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PlanModule } from './plan/plan.module';
     MemberModule,
     AuditModule,
     PlanModule,
+    MachineModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService, AuditService, PlanService],
