@@ -73,22 +73,48 @@ export class CoachService {
   }
 
   async getAllCoach() {
-    return await this.prismaService.fitapi_coach.findMany({
+    const coaches = await this.prismaService.fitapi_user.findMany({
+      where: {
+        is_active: true,
+        role: { in: ['COACH', 'coach'] },
+      },
       omit: {
-        user_id: true,
+        password: true,
+        is_active: true,
+        created_at: true,
+        last_login: true,
+        role: true,
       },
       include: {
-        fitapi_user: {
+        fitapi_coach: {
           omit: {
-            password: true,
-            is_active: true,
-            created_at: true,
-            last_login: true,
-            role: true,
+            user_id: true,
           },
         },
       },
     });
+
+    const pendingRequests = await this.prismaService.fitapi_user.findMany({
+      where: {
+        archived_at: null,
+        is_active: false,
+        role: { in: ['COACH', 'coach'] },
+      },
+      omit: {
+        password: true,
+        is_active: true,
+        last_login: true,
+      },
+      include: {
+        fitapi_coach: {
+          select: {
+            specialties: true,
+            id: true,
+          },
+        },
+      },
+    });
+    return { coaches, pendingRequests };
   }
 
   async getCoach(id: string) {
@@ -136,14 +162,77 @@ export class CoachService {
             first_name: body.first_name,
             last_name: body.last_name,
             email: body.email,
+            is_active: body.is_active,
           },
         },
       },
     });
   }
 
-  async deleteCoach(id: any) {
-    return await this.prismaService.fitapi_coach.delete({
+  async archiveCoach(id: string) {
+    //check if the user exists
+    await this.prismaService.fitapi_user.findUniqueOrThrow({
+      where: {
+        id,
+      },
+    });
+
+    return this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        is_active: false,
+        archived_at: new Date(),
+      },
+    });
+  }
+
+  async deleteCoach(id: string) {
+    const user = await this.prismaService.fitapi_user.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        fitapi_coach: true,
+      },
+    });
+
+    const coachId = user?.fitapi_coach?.id;
+
+    //delete coach related documents
+    await this.prismaService.fitapi_coachcertificate.deleteMany({
+      where: {
+        coach_id: coachId,
+      },
+    });
+
+    await this.prismaService.fitapi_coachreview.deleteMany({
+      where: {
+        coach_id: coachId,
+      },
+    });
+
+    await this.prismaService.fitapi_conversation.deleteMany({
+      where: {
+        coach_id: coachId,
+      },
+    });
+
+    await this.prismaService.fitapi_course.deleteMany({
+      where: {
+        coach_id: coachId,
+      },
+    });
+
+    //delete the coach document
+    await this.prismaService.fitapi_coach.delete({
+      where: {
+        id: coachId,
+      },
+    });
+
+    await this.prismaService.fitapi_user.delete({
       where: {
         id,
       },
@@ -157,7 +246,7 @@ export class CoachService {
         id: coachId,
       },
     });
-    console.log(body)
+    console.log(body);
     return await this.prismaService.fitapi_course.create({
       data: {
         id: randomUUID(),

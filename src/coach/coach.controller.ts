@@ -38,6 +38,11 @@ export class CoachController {
   async addNewCourse(@Param('coachId') coachId: string, @Body() body: any) {
     return await this.coachService.addNewCourse(coachId, body);
   }
+
+  @Patch('archiveCoach/:id')
+  async archiveCoach(@Param('id') id: string){
+    return await this.coachService.archiveCoach(id)
+  }
   @Delete('deleteCoach/:id')
   async deletCoach(@Param('id') id: string) {
     return await this.coachService.deleteCoach(id);
