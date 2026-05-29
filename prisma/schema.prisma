@@ -89,13 +89,18 @@ model django_session {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model fitapi_coach {
-  id                  String      @id @db.Uuid
-  specialties         String?
-  biography           String?
-  years_of_experience Int
-  user_id             String      @unique @db.Uuid
-  is_active           Boolean
-  fitapi_user         fitapi_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coach_user_id_e321d4b3_fk_fitapi_user_id")
+  id                      String                    @id @db.Uuid
+  specialties             String?
+  biography               String?
+  years_of_experience     Int
+  user_id                 String                    @unique @db.Uuid
+  is_active               Boolean
+  fitapi_user             fitapi_user               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coach_user_id_e321d4b3_fk_fitapi_user_id")
+  fitapi_coachcertificate fitapi_coachcertificate[]
+  fitapi_coachreview      fitapi_coachreview[]
+  fitapi_conversation     fitapi_conversation[]
+  fitapi_course           fitapi_course[]
+  fitapi_membre           fitapi_membre[]
 }
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
@@ -106,9 +111,19 @@ model fitapi_membre {
   medical_restrictions      String?
   join_date                 DateTime                    @db.Date
   user_id                   String                      @unique @db.Uuid
+  coach_id                  String?                     @db.Uuid
+  fitapi_coachreview        fitapi_coachreview[]
+  fitapi_conversation       fitapi_conversation[]
+  fitapi_coursereservation  fitapi_coursereservation[]
+  fitapi_coursewaitlist     fitapi_coursewaitlist[]
+  fitapi_gymentry           fitapi_gymentry[]
+  fitapi_coach              fitapi_coach?               @relation(fields: [coach_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_membre_coach_id_6986b5ae_fk_fitapi_coach_id")
   fitapi_user               fitapi_user                 @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_membre_user_id_400a03a2_fk_fitapi_user_id")
   fitapi_membresubscription fitapi_membresubscription[]
   fitapi_payment            fitapi_payment[]
+  fitapi_workoutlog         fitapi_workoutlog[]
+
+  @@index([coach_id], map: "fitapi_membre_coach_id_6986b5ae")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -122,6 +137,7 @@ model fitapi_membresubscription {
   pause_days_used         Int
   membre_id               String                  @db.Uuid
   plan_id                 String                  @db.Uuid
+  bonus_extension_days    Int
   fitapi_membre           fitapi_membre           @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_membresubscri_membre_id_f39e9da3_fk_fitapi_me")
   fitapi_subscriptionplan fitapi_subscriptionplan @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_membresubscri_plan_id_dd8967e0_fk_fitapi_su")
   fitapi_payment          fitapi_payment[]
@@ -140,6 +156,9 @@ model fitapi_payment {
   invoice_number            String?                    @unique @db.VarChar(100)
   membre_id                 String                     @db.Uuid
   subscription_id           String?                    @db.Uuid
+  chargily_checkout_id      String?                    @db.VarChar(128)
+  chargily_checkout_url     String?                    @db.VarChar(512)
+  chargily_status           String?                    @db.VarChar(32)
   fitapi_membre             fitapi_membre              @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_payment_membre_id_911708bb_fk_fitapi_membre_id")
   fitapi_membresubscription fitapi_membresubscription? @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_payment_subscription_id_9145130d_fk_fitapi_me")
 
@@ -158,6 +177,8 @@ model fitapi_subscriptionplan {
   duration_days             Int
   auto_renew                Boolean
   created_at                DateTime                    @db.Timestamptz(6)
+  tier                      String                      @db.VarChar(20)
+  includes_coach_chat       Boolean
   fitapi_membresubscription fitapi_membresubscription[]
 }
 
@@ -176,9 +197,13 @@ model fitapi_user {
   is_active                        Boolean
   is_staff                         Boolean
   archived_at                      DateTime?                          @db.Timestamptz(6)
+  is_online                        Boolean
   django_admin_log                 django_admin_log[]
   fitapi_coach                     fitapi_coach?
+  fitapi_machine                   fitapi_machine[]
   fitapi_membre                    fitapi_membre?
+  fitapi_message                   fitapi_message[]
+  fitapi_notification              fitapi_notification[]
   fitapi_passwordresettoken        fitapi_passwordresettoken[]
   fitapi_user_groups               fitapi_user_groups[]
   fitapi_user_user_permissions     fitapi_user_user_permissions[]
@@ -247,4 +272,197 @@ model fitapi_passwordresettoken {
 
   @@index([token], map: "fitapi_passwordresettoken_token_9d82e61e_like")
   @@index([user_id], map: "fitapi_passwordresettoken_user_id_98e2b204")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_coachcertificate {
+  id                   String       @id @db.Uuid
+  title                String       @db.VarChar(255)
+  issuing_organization String       @db.VarChar(255)
+  issue_date           DateTime     @db.Date
+  file                 String       @db.VarChar(100)
+  created_at           DateTime     @db.Timestamptz(6)
+  coach_id             String       @db.Uuid
+  fitapi_coach         fitapi_coach @relation(fields: [coach_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coachcertificate_coach_id_83922019_fk_fitapi_coach_id")
+
+  @@index([coach_id], map: "fitapi_coachcertificate_coach_id_83922019")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_coachreview {
+  id            String        @id @db.Uuid
+  rating        Int           @db.SmallInt
+  comment       String
+  created_at    DateTime      @db.Timestamptz(6)
+  updated_at    DateTime      @db.Timestamptz(6)
+  coach_id      String        @db.Uuid
+  membre_id     String        @db.Uuid
+  fitapi_coach  fitapi_coach  @relation(fields: [coach_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coachreview_coach_id_7fe061e3_fk_fitapi_coach_id")
+  fitapi_membre fitapi_membre @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coachreview_membre_id_0495395d_fk_fitapi_membre_id")
+
+  @@unique([coach_id, membre_id], map: "fitapi_coachreview_coach_id_membre_id_91e44d1d_uniq")
+  @@index([coach_id], map: "fitapi_coachreview_coach_id_7fe061e3")
+  @@index([membre_id], map: "fitapi_coachreview_membre_id_0495395d")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_conversation {
+  id             String           @id @db.Uuid
+  created_at     DateTime         @db.Timestamptz(6)
+  coach_id       String           @db.Uuid
+  membre_id      String           @db.Uuid
+  fitapi_coach   fitapi_coach     @relation(fields: [coach_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_conversation_coach_id_4bcb6586_fk_fitapi_coach_id")
+  fitapi_membre  fitapi_membre    @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_conversation_membre_id_3d8acff4_fk_fitapi_membre_id")
+  fitapi_message fitapi_message[]
+
+  @@unique([coach_id, membre_id], map: "fitapi_conversation_coach_id_membre_id_734cde05_uniq")
+  @@index([coach_id], map: "fitapi_conversation_coach_id_4bcb6586")
+  @@index([membre_id], map: "fitapi_conversation_membre_id_3d8acff4")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_course {
+  id                       String                     @id @db.Uuid
+  title                    String                     @db.VarChar(255)
+  description              String
+  level_required           String                     @db.VarChar(20)
+  max_participants         Int
+  duration_minutes         Int
+  date_time                DateTime                   @db.Timestamptz(6)
+  created_at               DateTime                   @db.Timestamptz(6)
+  coach_id                 String                     @db.Uuid
+  fitapi_coach             fitapi_coach               @relation(fields: [coach_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_course_coach_id_f5ffa440_fk_fitapi_coach_id")
+  fitapi_coursereservation fitapi_coursereservation[]
+  fitapi_coursewaitlist    fitapi_coursewaitlist[]
+
+  @@index([coach_id], map: "fitapi_course_coach_id_f5ffa440")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_coursereservation {
+  id                 String        @id @db.Uuid
+  reservation_status String        @db.VarChar(20)
+  reservation_date   DateTime      @db.Timestamptz(6)
+  course_id          String        @db.Uuid
+  membre_id          String        @db.Uuid
+  fitapi_course      fitapi_course @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coursereservation_course_id_e859b0f6_fk_fitapi_course_id")
+  fitapi_membre      fitapi_membre @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coursereservation_membre_id_f24e6b00_fk_fitapi_membre_id")
+
+  @@unique([course_id, membre_id], map: "fitapi_coursereservation_course_id_membre_id_6e68318d_uniq")
+  @@index([course_id], map: "fitapi_coursereservation_course_id_e859b0f6")
+  @@index([membre_id], map: "fitapi_coursereservation_membre_id_f24e6b00")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_coursewaitlist {
+  id            String        @id @db.Uuid
+  position      Int
+  created_at    DateTime      @db.Timestamptz(6)
+  course_id     String        @db.Uuid
+  membre_id     String        @db.Uuid
+  fitapi_course fitapi_course @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coursewaitlist_course_id_d6e1c593_fk_fitapi_course_id")
+  fitapi_membre fitapi_membre @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_coursewaitlist_membre_id_756b7526_fk_fitapi_membre_id")
+
+  @@unique([course_id, membre_id], map: "fitapi_coursewaitlist_course_id_membre_id_e8e443a5_uniq")
+  @@index([course_id], map: "fitapi_coursewaitlist_course_id_d6e1c593")
+  @@index([membre_id], map: "fitapi_coursewaitlist_membre_id_756b7526")
+}
+
+model fitapi_gymdailytoken {
+  id         String   @id @db.Uuid
+  token      String   @unique @db.VarChar(64)
+  date       DateTime @unique @db.Date
+  created_at DateTime @db.Timestamptz(6)
+
+  @@index([token], map: "fitapi_gymdailytoken_token_beb189bf_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_gymentry {
+  id            String        @id @db.Uuid
+  date          DateTime      @db.Date
+  entered_at    DateTime      @db.Timestamptz(6)
+  membre_id     String        @db.Uuid
+  fitapi_membre fitapi_membre @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_gymentry_membre_id_d6147e77_fk_fitapi_membre_id")
+
+  @@unique([membre_id, date], map: "fitapi_gymentry_membre_id_date_6cced49a_uniq")
+  @@index([membre_id], map: "fitapi_gymentry_membre_id_d6147e77")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_machine {
+  id                String              @id @db.Uuid
+  name              String              @db.VarChar(255)
+  type              String              @db.VarChar(20)
+  description       String
+  created_at        DateTime            @db.Timestamptz(6)
+  created_by_id     String?             @db.Uuid
+  fitapi_user       fitapi_user?        @relation(fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_machine_created_by_id_a3909d74_fk_fitapi_user_id")
+  fitapi_workoutlog fitapi_workoutlog[]
+
+  @@index([created_by_id], map: "fitapi_machine_created_by_id_a3909d74")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_message {
+  id                  String              @id @db.Uuid
+  message_type        String              @db.VarChar(10)
+  content             String
+  file                String?             @db.VarChar(100)
+  is_read             Boolean
+  deleted_at          DateTime?           @db.Timestamptz(6)
+  created_at          DateTime            @db.Timestamptz(6)
+  conversation_id     String              @db.Uuid
+  sender_id           String              @db.Uuid
+  fitapi_conversation fitapi_conversation @relation(fields: [conversation_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_message_conversation_id_9a58edb5_fk_fitapi_co")
+  fitapi_user         fitapi_user         @relation(fields: [sender_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_message_sender_id_7128b1da_fk_fitapi_user_id")
+
+  @@index([conversation_id], map: "fitapi_message_conversation_id_9a58edb5")
+  @@index([sender_id], map: "fitapi_message_sender_id_7128b1da")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_notification {
+  id                String      @id @db.Uuid
+  notification_type String      @db.VarChar(30)
+  title             String      @db.VarChar(255)
+  body              String
+  is_read           Boolean
+  created_at        DateTime    @db.Timestamptz(6)
+  user_id           String      @db.Uuid
+  fitapi_user       fitapi_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_notification_user_id_cbfed45a_fk_fitapi_user_id")
+
+  @@index([user_id], map: "fitapi_notification_user_id_cbfed45a")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_workoutlog {
+  id                String              @id @db.Uuid
+  notes             String
+  logged_at         DateTime            @db.Timestamptz(6)
+  machine_id        String              @db.Uuid
+  membre_id         String              @db.Uuid
+  fitapi_machine    fitapi_machine      @relation(fields: [machine_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_workoutlog_machine_id_71cc8063_fk_fitapi_machine_id")
+  fitapi_membre     fitapi_membre       @relation(fields: [membre_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_workoutlog_membre_id_964ad936_fk_fitapi_membre_id")
+  fitapi_workoutset fitapi_workoutset[]
+
+  @@index([machine_id], map: "fitapi_workoutlog_machine_id_71cc8063")
+  @@index([membre_id], map: "fitapi_workoutlog_membre_id_964ad936")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model fitapi_workoutset {
+  id                String            @id @db.Uuid
+  set_number        Int
+  reps              Int
+  weight_kg         Decimal           @db.Decimal(5, 2)
+  workout_log_id    String            @db.Uuid
+  fitapi_workoutlog fitapi_workoutlog @relation(fields: [workout_log_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fitapi_workoutset_workout_log_id_0a1f4168_fk_fitapi_wo")
+
+  @@unique([workout_log_id, set_number], map: "fitapi_workoutset_workout_log_id_set_number_05f95fd7_uniq")
+  @@index([workout_log_id], map: "fitapi_workoutset_workout_log_id_0a1f4168")
 }

@@ -31,6 +31,7 @@ export class MemberService {
         role: 'Member',
         phone: data.phone,
         is_active: true,
+        is_online: false,
         created_at: new Date(),
         is_superuser: false,
         is_staff: false,

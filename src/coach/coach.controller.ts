@@ -34,6 +34,10 @@ export class CoachController {
     return await this.coachService.updateCoach(id, body);
   }
 
+  @Post('addCourse/:coachId')
+  async addNewCourse(@Param('coachId') coachId: string, @Body() body: any) {
+    return await this.coachService.addNewCourse(coachId, body);
+  }
   @Delete('deleteCoach/:id')
   async deletCoach(@Param('id') id: string) {
     return await this.coachService.deleteCoach(id);

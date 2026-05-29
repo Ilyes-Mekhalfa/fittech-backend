@@ -32,6 +32,7 @@ export class CoachService {
         role: 'COACH',
         phone: data.phone,
         is_active: true,
+        is_online: false,
         created_at: new Date(),
         is_superuser: false,
         is_staff: false,
@@ -145,6 +146,29 @@ export class CoachService {
     return await this.prismaService.fitapi_coach.delete({
       where: {
         id,
+      },
+    });
+  }
+
+  async addNewCourse(coachId: string, body: any) {
+    //check if coach exists
+    await this.prismaService.fitapi_coach.findUniqueOrThrow({
+      where: {
+        id: coachId,
+      },
+    });
+    console.log(body)
+    return await this.prismaService.fitapi_course.create({
+      data: {
+        id: randomUUID(),
+        coach_id: coachId,
+        title: body.title,
+        description: body.description,
+        max_participants: body.maxParticipants,
+        duration_minutes: body.duration,
+        level_required: body.level_required,
+        created_at: new Date(),
+        date_time: body.date
       },
     });
   }
