@@ -168,7 +168,7 @@ export class CoachService {
         duration_minutes: body.duration,
         level_required: body.level_required,
         created_at: new Date(),
-        date_time: body.date
+        date_time: new Date(body.date).toISOString(),
       },
     });
   }
