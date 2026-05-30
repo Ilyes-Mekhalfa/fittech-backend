@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { randomUUID } from 'node:crypto';
 @Injectable()
 export class MachineService {
   constructor(private prismaService: PrismaService) {}
@@ -19,6 +20,8 @@ export class MachineService {
   async addMachine(machine: any) {
     return await this.prismaService.fitapi_machine.create({
       data: {
+        id: randomUUID(),
+        created_at: new Date(),
         ...machine,
       },
     });
