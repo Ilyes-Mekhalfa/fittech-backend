@@ -16,6 +16,7 @@ import { PlanService } from './plan/plan.service';
 import { PlanModule } from './plan/plan.module';
 import { MachineModule } from './machine/machine.module';
 import { LandingModule } from './landing/landing.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { LandingModule } from './landing/landing.module';
     PlanModule,
     MachineModule,
     LandingModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService, AuditService, PlanService],

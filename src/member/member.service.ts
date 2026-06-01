@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
+import { SocketGateway } from 'src/socket/socket.gateway';
 @Injectable()
 export class MemberService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(private prismaService: PrismaService, private socketGateway: SocketGateway) {}
 
   async addMember(body: any) {
     const data = body;
@@ -133,8 +134,8 @@ export class MemberService {
         archived_at: new Date(),
       },
     });
-
-    return true;
+    this.socketGateway.broadcast('member_deleted', { id });
+    return { message: 'Member archived successfully', id };
   }
   async deleteMember(id: string) {
     // check if the member exists
