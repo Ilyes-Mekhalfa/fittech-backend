@@ -85,6 +85,7 @@ export class MemberService {
             role: true,
           },
         },
+        fitapi_membresubscription: true,
       },
     });
   }

@@ -22,22 +22,33 @@ export class LandingService {
   }
 
   async getCoachesData() {
-    const { coaches } = await this.coachesService.getAllCoach();
+    const coaches = await this.prismaService.fitapi_coach.findMany({
+      select: {
+        id: true,
+        specialties: true,
+        years_of_experience: true,
+        biography: true,
 
-    //getting reviews
-    const Ids = coaches.map((coach: any) => coach.fitapi_coach.id);
-    const reviews = await this.prismaService.fitapi_coachreview.groupBy({
-      by: ['coach_id'],
-      where: {
-        coach_id: {
-          in: Ids,
+        fitapi_user: {
+          select: {
+            first_name: true,
+            last_name: true,
+          },
         },
-      },
-      _avg: {
-        rating: true,
+
+        fitapi_coachreview: {
+          select: {
+            rating: true,
+          },
+        },
+
+        fitapi_course: true,
+
+        fitapi_coachcertificate: true,
       },
     });
-    return 1;
+
+    return coaches;
   }
 
   async getPlansData() {

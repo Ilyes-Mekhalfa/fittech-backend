@@ -2,58 +2,60 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AuditService } from 'src/audit/audit.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
+import { randomBytes, randomUUID } from 'crypto';
 @Injectable()
 export class AdminService {
-    private readonly logger = new Logger(AdminService.name)
-    constructor(private prismaService: PrismaService, private auditService: AuditService) { }
+  private readonly logger = new Logger(AdminService.name);
+  constructor(
+    private prismaService: PrismaService,
+    private auditService: AuditService,
+  ) {}
 
-    //to get all the logs in the db for the admin
-    async getAuditLogs() {
-        return await this.auditService.getAuditLogs()
+  //to get all the logs in the db for the admin
+  async getAuditLogs() {
+    return await this.auditService.getAuditLogs();
+  }
+
+  //active and archived users
+  async getActiveUsers() {
+    return await this.prismaService.fitapi_user.findMany({
+      where: {
+        is_active: false,
+      },
+    });
+  }
+
+  async getArchivedUsers() {
+    return await this.prismaService.fitapi_user.findMany({
+      where: {
+        is_active: true,
+      },
+    });
+  }
+
+  async archiveUser(id: any) {
+    const user = await this.prismaService.fitapi_user.findUniqueOrThrow({
+      where: {
+        id,
+      },
+    });
+
+    if (user.is_active) {
+      throw new BadRequestException('user is already archived');
     }
 
-    //active and archived users
-    async getActiveUsers() {
-        return await this.prismaService.fitapi_user.findMany({
-            where: {
-                is_active: false,
-            }
-        })
-    }
+    return await this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        is_active: true,
+        archived_at: new Date(),
+      },
+    });
+  }
 
-    async getArchivedUsers() {
-        return await this.prismaService.fitapi_user.findMany({
-            where: {
-                is_active: true
-            }
-        })
-    }
-
-
-    async archiveUser(id: any) {
-        const user = await this.prismaService.fitapi_user.findUniqueOrThrow({
-            where: {
-                id,
-            }
-        })
-
-        if (user.is_active) {
-            throw new BadRequestException('user is already archived')
-        }
-
-        return await this.prismaService.fitapi_user.update({
-            where: {
-                id
-            },
-            data: {
-                is_active: true,
-                archived_at: new Date(),
-            }
-        })
-
-    }
-
-    @Cron('0 0 1 * *')
+  @Cron('0 0 1 * *')
   async archiveInactiveUsers() {
     this.logger.log('Starting monthly archival batch...');
 
@@ -68,7 +70,7 @@ export class AdminService {
             last_login: null,
             created_at: { lt: cutoffDate },
           },
-           {
+          {
             last_login: { lt: cutoffDate },
           },
         ],
@@ -98,7 +100,7 @@ export class AdminService {
           user_id: user.id,
           performedBy: 'SYSTEM',
           status: 'SUCCESS',
-          metadata : {
+          metadata: {
             message: 'Inactive for 1 year',
             last_login: user.last_login ?? 'never',
             trigger: 'monthly_batch',
@@ -108,40 +110,50 @@ export class AdminService {
         success++;
       } catch (error) {
         failed++;
-        this.logger.error(`Failed to archive user ${user.id}: ${error.message}`);
+        this.logger.error(
+          `Failed to archive user ${user.id}: ${error.message}`,
+        );
       }
     }
 
     this.logger.log(`Batch done — Archived: ${success} | Failed: ${failed}`);
   }
 
-    async restoreUser(id: any) {
-        const user = await this.prismaService.fitapi_user.findUniqueOrThrow({
-            where: {
-                id,
-            }
-        })
+  async restoreUser(id: any) {
+    const user = await this.prismaService.fitapi_user.findUniqueOrThrow({
+      where: {
+        id,
+      },
+    });
 
-        if (!user.is_active) {
-            throw new BadRequestException('user is not archived')
-        }
-
-        return await this.prismaService.fitapi_user.update({
-            where: {
-                id
-            },
-            data: {
-                is_active: false,
-                archived_at: undefined,
-            }
-        })
-
+    if (!user.is_active) {
+      throw new BadRequestException('user is not archived');
     }
 
-    async deleteUser(id: any) { }
+    return await this.prismaService.fitapi_user.update({
+      where: {
+        id,
+      },
+      data: {
+        is_active: false,
+        archived_at: undefined,
+      },
+    });
+  }
 
-
+  @Cron('0 0 * * *', {
+    name: 'daily-token-generation',
+    timeZone: 'Africa/Algiers',
+  })
+  async dailyToken() {
+    const token = randomBytes(32).toString('hex');
+    return await this.prismaService.fitapi_gymdailytoken.create({
+      data: {
+        id: randomUUID(),
+        token,
+        created_at: new Date(),
+        date: new Date(),
+      },
+    });
+  }
 }
-
-
-
