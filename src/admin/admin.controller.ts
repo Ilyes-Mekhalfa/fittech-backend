@@ -54,4 +54,8 @@ export class AdminController {
   async dailyToken() {
     return await this.adminService.dailyToken();
   }
+  @Get('dailyToken')
+  async getDailyToken() {
+    return this.adminService.getDailyToken();
+  }
 }
