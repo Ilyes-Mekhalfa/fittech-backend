@@ -90,6 +90,17 @@ export class CoachService {
           omit: {
             user_id: true,
           },
+          include: {
+            fitapi_coachreview: {
+              select: {
+                rating: true,
+              },
+            },
+
+            fitapi_course: true,
+
+            fitapi_coachcertificate: true,
+          },
         },
       },
     });

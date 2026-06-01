@@ -9,8 +9,13 @@ export class LandingController {
     return await this.landingService.getHeroData();
   }
 
-  // @Get('coaches')
-  // async getCoachesData(){
-  //     return await this.landingService.getCoachesData()
-  // }
+  @Get('coaches')
+  async getCoachesData() {
+    return await this.landingService.getCoachesData();
+  }
+
+  @Get('plans')
+  async getPlansData() {
+    return await this.landingService.getPlansData();
+  }
 }
