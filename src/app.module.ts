@@ -17,6 +17,7 @@ import { PlanModule } from './plan/plan.module';
 import { MachineModule } from './machine/machine.module';
 import { LandingModule } from './landing/landing.module';
 import { SocketModule } from './socket/socket.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SocketModule } from './socket/socket.module';
     MachineModule,
     LandingModule,
     SocketModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService, AuditService, PlanService],
