@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanService } from '../plan/plan.service';
 import { CoachService } from 'src/coach/coach.service';
+
 @Injectable()
 export class LandingService {
   constructor(
@@ -11,7 +12,7 @@ export class LandingService {
   ) {}
 
   async getHeroData() {
-    //until using redis for real data
+    // Keeping this optimized with Promise.all until you add your Redis caching tier
     const [coaches, members, plans] = await Promise.all([
       this.prismaService.fitapi_coach.count(),
       this.prismaService.fitapi_membre.count(),
@@ -21,7 +22,11 @@ export class LandingService {
     return { coaches, members, plans };
   }
 
-  async getCoachesData() {
+  /**
+   * Fetches public coach profiles.
+   * Named getCoachData to map cleanly to your frontend Angular component calls.
+   */
+  async getCoachData() {
     const coaches = await this.prismaService.fitapi_coach.findMany({
       select: {
         id: true,
@@ -49,6 +54,11 @@ export class LandingService {
     });
 
     return coaches;
+  }
+
+  // Fallback alias in case your current LandingController specifically calls the plural version
+  async getCoachesData() {
+    return this.getCoachData();
   }
 
   async getPlansData() {

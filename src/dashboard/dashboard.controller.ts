@@ -24,4 +24,9 @@ export class DashboardController {
   async getPlanStats() {
     return await this.dashboardService.getPlanStats();
   }
+
+  @Get('liveEntrance')
+  async broadcastLiveEntrance() {
+    return await this.dashboardService.broadcastLiveEntrance();
+  }
 }

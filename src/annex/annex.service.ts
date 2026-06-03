@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as crypto from 'crypto';
+import { SocketGateway } from 'src/socket/socket.gateway'; // 1. Import your WebSockets Gateway
+
 @Injectable()
 export class AnnexService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private socketGateway: SocketGateway, // 2. Inject your real-time messaging gateway
+  ) {}
+
   async findAnnex(email: string) {
     return await this.prisma.fitapi_user.findFirst({
       where: {
@@ -13,77 +18,61 @@ export class AnnexService {
   }
 
   async createAnnex(data: any) {
-    return await this.prisma.fitapi_user.create({
+    const newAnnex = await this.prisma.fitapi_user.create({
       data,
     });
+
+    // 3. Emit real-time addition event so admin tables append the row instantly
+    this.socketGateway.server.emit('annex_added', newAnnex);
+
+    return newAnnex;
   }
 
   async updateAnnex(id: string, data: any) {
-    //check if the annex exists
+    // Check if the annex exists
     const exists = await this.prisma.fitapi_user.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!exists) {
-      throw new BadRequestException('Annex does not exists');
+      throw new BadRequestException('Annex does not exist');
     }
-    //validate data to be done later
-    return await this.prisma.fitapi_user.update({
-      where: {
-        id,
-      },
+
+    // Validate data to be done later
+    const updatedAnnex = await this.prisma.fitapi_user.update({
+      where: { id },
       data,
     });
+
+    // 4. Emit update event to sync open profile sheets or list rows
+    this.socketGateway.server.emit('annex_updated', updatedAnnex);
+
+    return updatedAnnex;
   }
 
   async deleteAnnex(id: string) {
-    //check if the annex exists
+    // Check if the annex exists
     const exists = await this.prisma.fitapi_user.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!exists) {
-      throw new BadRequestException('Annex does not exists');
+      throw new BadRequestException('Annex does not exist');
     }
-    return await this.prisma.fitapi_user.delete({
-      where: {
-        id,
-      },
+
+    await this.prisma.fitapi_user.delete({
+      where: { id },
     });
+
+    // 5. Emit removal event to clear out the UI entries live
+    this.socketGateway.server.emit('annex_deleted', { id });
+
+    return { id, message: 'Annex deleted successfully' };
   }
-  // async createResetToken(id: string) {
-  //   const resetToken = crypto.randomBytes(32).toString('hex');
-  //   await this.prisma.fitapi_user.update({
-  //     where: { id },
-  //     data: {
-  //       resetToken,
-  //       resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
-  //     },
-  //   });
-
-  //   return resetToken;
-  // }
-
-  // async findResetTokenAnnex(resetToken: string) {
-  //   return await this.prisma.fitapi_user.findFirst({
-  //     where: {
-  //       resetToken,
-  //       resetTokenExpiry: {
-  //         gt: new Date(),
-  //       },
-  //     },
-  //   });
-  // }
 
   async findAnnexByCode(id: string) {
     return await this.prisma.fitapi_user.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
   }
 }

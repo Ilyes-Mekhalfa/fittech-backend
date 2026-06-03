@@ -1,11 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LandingService } from '../landing/landing.service';
+import { SocketGateway } from 'src/socket/socket.gateway'; // 1. Import your WebSockets Gateway
+
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
+
   constructor(
     private prismaService: PrismaService,
     private landingService: LandingService,
+    private socketGateway: SocketGateway, // 2. Inject your real-time messaging gateway
   ) {}
 
   async getStats() {
@@ -58,6 +63,9 @@ export class DashboardService {
   }
 
   async getMemberStats() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     const [activeMembers, newMembers, subscribedMembers, membersGrowth] =
       await Promise.all([
         this.prismaService.fitapi_user.count({
@@ -66,11 +74,12 @@ export class DashboardService {
             is_online: true,
           },
         }),
+        // FIX: Changed 'lte' to 'gte' to capture users created *within* the last 30 days
         this.prismaService.fitapi_user.findMany({
           where: {
             role: { in: ['member', 'Member'] },
             created_at: {
-              lte: new Date(new Date().setDate(new Date().getDate() - 30)),
+              gte: thirtyDaysAgo,
             },
           },
         }),
@@ -161,5 +170,70 @@ export class DashboardService {
       lastName: entry.fitapi_membre.fitapi_user.last_name,
       fullName: `${entry.fitapi_membre.fitapi_user.first_name} ${entry.fitapi_membre.fitapi_user.last_name}`,
     }));
+  }
+
+  // =========================================================================
+  // REAL-TIME BROADCAST HUB METHODS
+  // Call these from other services whenever user, coach, or machine data alters!
+  // =========================================================================
+
+  /**
+   * Broadcasts updated general statistics to app-stats components
+   */
+  async broadcastGeneralStats() {
+    try {
+      const stats = await this.getStats();
+      this.socketGateway.server.emit('general_stats_updated', stats);
+    } catch (err) {
+      this.logger.error('Failed to broadcast general stats:', err.message);
+    }
+  }
+
+  /**
+   * Broadcasts updated coach metrics to app-coach-stats components
+   */
+  async broadcastCoachStats() {
+    try {
+      const stats = await this.getCoachStats();
+      this.socketGateway.server.emit('coach_stats_updated', stats);
+    } catch (err) {
+      this.logger.error('Failed to broadcast coach stats:', err.message);
+    }
+  }
+
+  /**
+   * Broadcasts updated membership figures and growth chart data to app-member-stats components
+   */
+  async broadcastMemberStats() {
+    try {
+      const stats = await this.getMemberStats();
+      this.socketGateway.server.emit('member_stats_updated', stats);
+    } catch (err) {
+      this.logger.error('Failed to broadcast member stats:', err.message);
+    }
+  }
+
+  /**
+   * Broadcasts updated plan donut distribution charts to app-plan-stats components
+   */
+  async broadcastPlanStats() {
+    try {
+      const stats = await this.getPlanStats();
+      this.socketGateway.server.emit('plan_stats_updated', stats);
+    } catch (err) {
+      this.logger.error('Failed to broadcast plan stats:', err.message);
+    }
+  }
+
+  /**
+   * Broadcasts a live turnstile entrance log message to the reception dashboard lists
+   */
+  async broadcastLiveEntrance() {
+    try {
+      const liveLog = await this.liveEntrance();
+      this.socketGateway.server.emit('live_entrance_logged', liveLog);
+    } catch (err) {
+      this.logger.error('Failed to broadcast live entrance logs:', err.message);
+    }
   }
 }
