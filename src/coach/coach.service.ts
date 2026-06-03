@@ -1,14 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { SocketGateway } from 'src/socket/socket.gateway'; // 1. Import your WebSockets Gateway
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class CoachService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private socketGateway: SocketGateway // 2. Inject your real-time messaging gateway
+  ) {}
 
   async addCoach(body: any) {
     const data = body;
-    //check if the coach exists already
+    // Check if the coach exists already
     const exists = await this.prismaService.fitapi_user.findUnique({
       where: {
         email: data.email,
@@ -19,9 +23,7 @@ export class CoachService {
       throw new BadRequestException('coach exists already please try to login');
     }
 
-    //data validation
-    //to be added later
-    //add the user to the db
+    // Add the user to the db
     const user = await this.prismaService.fitapi_user.create({
       data: {
         id: randomUUID(),
@@ -42,7 +44,7 @@ export class CoachService {
       },
     });
 
-    //add the coach to the db
+    // Add the coach to the db
     const coach = await this.prismaService.fitapi_coach.create({
       data: {
         id: randomUUID(),
@@ -68,6 +70,9 @@ export class CoachService {
         },
       },
     });
+
+    // 3. Emit real-time notification to the admin panels monitoring applications
+    this.socketGateway.server.emit('coach_added', coach);
 
     return coach;
   }
@@ -96,9 +101,7 @@ export class CoachService {
                 rating: true,
               },
             },
-
             fitapi_course: true,
-
             fitapi_coachcertificate: true,
           },
         },
@@ -129,11 +132,8 @@ export class CoachService {
   }
 
   async getCoach(id: string) {
-    //check if the coach exists
     return await this.prismaService.fitapi_coach.findUniqueOrThrow({
-      where: {
-        id,
-      },
+      where: { id },
       omit: {
         user_id: true,
         is_active: true,
@@ -153,18 +153,12 @@ export class CoachService {
   }
 
   async updateCoach(id: string, body: any) {
-    //check if the  user exists
-
     await this.prismaService.fitapi_coach.findUniqueOrThrow({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
-    return await this.prismaService.fitapi_coach.update({
-      where: {
-        id,
-      },
+    const updatedCoach = await this.prismaService.fitapi_coach.update({
+      where: { id },
       data: {
         specialties: body.specialties,
         biography: body.biography,
@@ -177,33 +171,52 @@ export class CoachService {
           },
         },
       },
+      include: {
+        fitapi_user: true
+      }
     });
+
+    // 4. Emit update event to the coach list components
+    this.socketGateway.server.emit('coach_updated', updatedCoach);
+
+    // 5. If an admin flips a pending coach to active, broadcast approval to the landing page!
+    if (body.is_active === true) {
+      this.socketGateway.server.emit('coach_approved', {
+        id: updatedCoach.id,
+        approvedCoach: {
+          name: `${updatedCoach.fitapi_user.first_name} ${updatedCoach.fitapi_user.last_name}`,
+          specialty: updatedCoach.specialties?.[0] || 'Fitness',
+          rating: 5.0,
+          image: 'assets/coaches/coach-default.jpg' // Fallback placeholder
+        }
+      });
+    }
+
+    return updatedCoach;
   }
 
   async archiveCoach(id: string) {
-    //check if the user exists
     await this.prismaService.fitapi_user.findUniqueOrThrow({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
-    return this.prismaService.fitapi_user.update({
-      where: {
-        id,
-      },
+    const archivedUser = await this.prismaService.fitapi_user.update({
+      where: { id },
       data: {
         is_active: false,
         archived_at: new Date(),
       },
     });
+
+    // 6. Emit deletion event to clear it from the landing and dashboard lists
+    this.socketGateway.server.emit('coach_deleted', { id });
+
+    return archivedUser;
   }
 
   async deleteCoach(id: string) {
     const user = await this.prismaService.fitapi_user.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       include: {
         fitapi_coach: true,
       },
@@ -211,54 +224,29 @@ export class CoachService {
 
     const coachId = user?.fitapi_coach?.id;
 
-    //delete coach related documents
-    await this.prismaService.fitapi_coachcertificate.deleteMany({
-      where: {
-        coach_id: coachId,
-      },
-    });
+    if (coachId) {
+      // Delete coach sub-structures
+      await this.prismaService.fitapi_coachcertificate.deleteMany({ where: { coach_id: coachId } });
+      await this.prismaService.fitapi_coachreview.deleteMany({ where: { coach_id: coachId } });
+      await this.prismaService.fitapi_conversation.deleteMany({ where: { coach_id: coachId } });
+      await this.prismaService.fitapi_course.deleteMany({ where: { coach_id: coachId } });
 
-    await this.prismaService.fitapi_coachreview.deleteMany({
-      where: {
-        coach_id: coachId,
-      },
-    });
+      // Delete the core coach record
+      await this.prismaService.fitapi_coach.delete({ where: { id: coachId } });
+    }
 
-    await this.prismaService.fitapi_conversation.deleteMany({
-      where: {
-        coach_id: coachId,
-      },
-    });
+    await this.prismaService.fitapi_user.delete({ where: { id } });
 
-    await this.prismaService.fitapi_course.deleteMany({
-      where: {
-        coach_id: coachId,
-      },
-    });
-
-    //delete the coach document
-    await this.prismaService.fitapi_coach.delete({
-      where: {
-        id: coachId,
-      },
-    });
-
-    await this.prismaService.fitapi_user.delete({
-      where: {
-        id,
-      },
-    });
+    // 7. Clear the item completely from all active UI interfaces
+    this.socketGateway.server.emit('coach_deleted', { id });
   }
 
   async addNewCourse(coachId: string, body: any) {
-    //check if coach exists
     await this.prismaService.fitapi_coach.findUniqueOrThrow({
-      where: {
-        id: coachId,
-      },
+      where: { id: coachId },
     });
-    console.log(body);
-    return await this.prismaService.fitapi_course.create({
+    
+    const newCourse = await this.prismaService.fitapi_course.create({
       data: {
         id: randomUUID(),
         coach_id: coachId,
@@ -271,5 +259,10 @@ export class CoachService {
         date_time: new Date(body.date).toISOString(),
       },
     });
+
+    // 8. Real-time update for class schedules/calendars
+    this.socketGateway.server.emit('course_added', newCourse);
+
+    return newCourse;
   }
 }

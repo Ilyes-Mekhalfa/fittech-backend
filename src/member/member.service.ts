@@ -2,26 +2,27 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { SocketGateway } from 'src/socket/socket.gateway';
+
 @Injectable()
 export class MemberService {
-  constructor(private prismaService: PrismaService, private socketGateway: SocketGateway) {}
+  constructor(
+    private prismaService: PrismaService,
+    private socketGateway: SocketGateway,
+  ) {}
 
   async addMember(body: any) {
     const data = body;
-    //check if the user exists
+    // Check if the user exists
     const exists = await this.prismaService.fitapi_user.findUnique({
       where: {
         email: data.email,
       },
     });
     if (exists) {
-      throw new BadRequestException('mamber exists already');
+      throw new BadRequestException('member exists already');
     }
 
-    //validate Data
-    //to be done later
-
-    //create member
+    // Create user base record
     const user = await this.prismaService.fitapi_user.create({
       data: {
         id: randomUUID(),
@@ -41,7 +42,8 @@ export class MemberService {
         id: true,
       },
     });
-    return await this.prismaService.fitapi_membre.create({
+
+    const newMember = await this.prismaService.fitapi_membre.create({
       data: {
         id: randomUUID(),
         join_date: new Date(),
@@ -65,6 +67,11 @@ export class MemberService {
         },
       },
     });
+
+    // 1. Emit live registration notice to management logs
+    this.socketGateway.server.emit('member_added', newMember);
+
+    return newMember;
   }
 
   async getAllMembers() {
@@ -93,9 +100,7 @@ export class MemberService {
 
   async getMember(id: string) {
     return await this.prismaService.fitapi_membre.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       omit: {
         user_id: true,
       },
@@ -114,35 +119,38 @@ export class MemberService {
   }
 
   async updateMember(id: string, body: any) {
-    return await this.prismaService.fitapi_user.update({
-      where: {
-        id,
-      },
+    const updatedUser = await this.prismaService.fitapi_user.update({
+      where: { id },
       data: {
         ...body,
       },
     });
+
+    // 2. Broadcast updates so row fields rewrite themselves on screen
+    this.socketGateway.server.emit('member_updated', updatedUser);
+
+    return updatedUser;
   }
 
   async archiveMember(id: string) {
     await this.prismaService.fitapi_user.update({
-      where: {
-        id,
-      },
+      where: { id },
       data: {
         is_active: false,
         archived_at: new Date(),
       },
     });
-    this.socketGateway.broadcast('member_deleted', { id });
+
+    // 3. Normalized real-time broadcast across matching dashboards
+    this.socketGateway.server.emit('member_deleted', { id });
+
     return { message: 'Member archived successfully', id };
   }
+
   async deleteMember(id: string) {
-    // check if the member exists
+    // Check if the member exists
     const member = await this.prismaService.fitapi_membre.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       select: {
         user_id: true,
       },
@@ -155,49 +163,26 @@ export class MemberService {
     const userId = member.user_id;
 
     // Deletion order: child records first, then parent records
-    // 1. Delete payments (references both membre and membresubscription)
     await this.prismaService.fitapi_payment.deleteMany({
-      where: {
-        membre_id: id,
-      },
+      where: { membre_id: id },
     });
-
-    // 2. Delete subscriptions (references membre)
     await this.prismaService.fitapi_membresubscription.deleteMany({
-      where: {
-        membre_id: id,
-      },
+      where: { membre_id: id },
     });
+    await this.prismaService.fitapi_membre.delete({ where: { id } });
 
-    // 3. Delete membre record
-    await this.prismaService.fitapi_membre.delete({
-      where: {
-        id,
-      },
-    });
-
-    // 4. Delete user groups
+    // Auth and infrastructure logs
     await this.prismaService.fitapi_user_groups.deleteMany({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
     });
-
-    // 5. Delete user permissions
     await this.prismaService.fitapi_user_user_permissions.deleteMany({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
     });
-
-    // 6. Delete password reset tokens
     await this.prismaService.fitapi_passwordresettoken.deleteMany({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
     });
 
-    // 7. Delete blacklisted tokens (delete blacklisted first, then outstanding)
+    // JWT token tracking tables cleanup
     await this.prismaService.token_blacklist_blacklistedtoken.deleteMany({
       where: {
         token_blacklist_outstandingtoken: {
@@ -205,27 +190,18 @@ export class MemberService {
         },
       },
     });
-
-    // 8. Delete outstanding tokens
     await this.prismaService.token_blacklist_outstandingtoken.deleteMany({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
     });
-
-    // 9. Delete admin logs
     await this.prismaService.django_admin_log.deleteMany({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
     });
 
-    // 11. Delete user
-    await this.prismaService.fitapi_user.delete({
-      where: {
-        id: userId,
-      },
-    });
+    // Final core entity removal
+    await this.prismaService.fitapi_user.delete({ where: { id: userId } });
+
+    // 4. Emit instant eviction event to purge row tracking records from screens
+    this.socketGateway.server.emit('member_deleted', { id });
 
     return true;
   }

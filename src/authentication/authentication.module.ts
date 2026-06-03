@@ -8,7 +8,7 @@ import { AnnexService } from 'src/annex/annex.service';
 import { EmailService } from 'src/mail/mail.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AnnexModule } from 'src/annex/annex.module';
-
+import { SocketGateway } from 'src/socket/socket.gateway'; // Import your WebSockets Gateway
 @Module({
   imports: [
     AnnexModule,
@@ -36,6 +36,7 @@ import { AnnexModule } from 'src/annex/annex.module';
     ConfigService,
     JwtStrategy,
     JwtService,
+    SocketGateway,
   ],
   controllers: [AuthenticationController],
 })
