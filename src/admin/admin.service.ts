@@ -163,17 +163,15 @@ export class AdminService {
 
     const end = new Date();
     end.setHours(23, 59, 59, 999);
-
     const token =
       await this.prismaService.fitapi_gymdailytoken.findFirstOrThrow({
         where: {
           date: {
-            gte: start,
+            gt: start,
             lte: end,
           },
         },
       });
-    console.log(token);
     return token;
   }
 }
