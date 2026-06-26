@@ -11,6 +11,9 @@ import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { randomUUID } from 'crypto';
+
 @Injectable()
 export class AuthenticationService {
   constructor(
@@ -18,123 +21,145 @@ export class AuthenticationService {
     private emailService: EmailService,
     private config: ConfigService,
     private jwtService: JwtService,
+    private prisma: PrismaService,
   ) {}
 
   async login(data: loginDTO) {
-    let annex = await this.annexService.findAnnex(data.email);
+    const annex = await this.annexService.findAnnex(data.email);
     if (!annex) {
       throw new BadRequestException('Annex does not exists');
     }
-    //logic to be added later
 
-    // const correct: boolean = await bcrypt.compare(
-    //   data.password,
-    //   annex.password,
-    // );
+    const correct: boolean = await bcrypt.compare(
+      data.password,
+      annex.password,
+    );
 
-    // if (!correct) {
-    //   throw new BadRequestException('Invalid credentials');
-    // }
-    //add token
-    // const accessToken = this.jwtService.sign(
-    //   {
-    //     annexCode: '222',
-    //     annexName: annex.first_name,
-    //     role: annex.role,
-    //   },
-    //   { secret: this.config.get<string>('ACCESS_TOKEN') },
-    // );
-    return { annex };
+    if (!correct) {
+      throw new BadRequestException('Invalid credentials');
+    }
+
+    const accessToken = this.jwtService.sign(
+      {
+        annexCode: annex.id,
+        annexName: annex.first_name,
+        role: annex.role,
+      },
+      { secret: this.config.get<string>('ACCESS_TOKEN') },
+    );
+
+    return { annex, accessToken };
   }
 
   async register(data: registerDTO) {
-    //check if the annex admin exists
-    let registerData = { ...data };
     const exists = await this.annexService.findAnnex(data.email);
 
     if (exists) {
       throw new BadRequestException('Annex exists already');
     }
 
-    //validate data
-    //to be added later
-    //hash password
-    registerData.password = await bcrypt.hash(registerData.password, 11);
-    const annex = await this.annexService.createAnnex(registerData);
+    const hashedPassword = await bcrypt.hash(data.password, 11);
 
-    //add token
-    // const accessToken = this.jwtService.sign(
-    //   {
-    //     annexCode: annex.annexCode,
-    //     annexName: annex.annexName,
-    //   },
-    //   { secret: this.config.get<string>('ACCESS_TOKEN') },
-    // );
+    const annex = await this.annexService.createAnnex({
+      id: randomUUID(),
+      email: data.email,
+      password: hashedPassword,
+      first_name: data.annexName,
+      last_name: data.annexLocation || '',
+      role: data.role,
+      phone: data.phone || null,
+      is_active: true,
+      is_online: false,
+      is_superuser: data.role === 'ADMIN',
+      is_staff: true,
+      created_at: new Date(),
+    });
+
+    const accessToken = this.jwtService.sign(
+      {
+        annexCode: annex.id,
+        annexName: annex.first_name,
+        role: annex.role,
+      },
+      { secret: this.config.get<string>('ACCESS_TOKEN') },
+    );
+
     return {
       annex,
-      // accessToken,
+      accessToken,
     };
   }
 
-  // async forgetPassword(data: forgetPasswordDTO) {
-  //   //check if the annex exists
-  //   const annex = await this.annexService.findAnnex(data.email);
+  async forgetPassword(data: forgetPasswordDTO) {
+    const annex = await this.annexService.findAnnex(data.email);
 
-  //   if (!annex) {
-  //     throw new BadRequestException('annex does not exists');
-  //   }
+    if (!annex) {
+      throw new BadRequestException('annex does not exists');
+    }
 
-  //   //generate reset token
-  //   // const resetToken = await this.annexService.createResetToken(
-  //   //   annex.annexCode,
-  //   // );
+    const resetToken = randomUUID();
+    await this.prisma.fitapi_passwordresettoken.create({
+      data: {
+        token: resetToken,
+        created_at: new Date(),
+        is_used: false,
+        user_id: annex.id,
+      },
+    });
 
-  //   //send email to the manager
+    const link = `${this.config.get('BASE_URL') || 'http://localhost:4200'}/reset-password?token=${resetToken}`;
+    await this.emailService.sendPasswordResetEmail(annex.email, link);
 
-  //   const link = `${this.config.get('BASE_URL')}/reset-password?token=${resetToken}`;
-  //   await this.emailService.sendPasswordResetEmail(annex.email, link);
+    return {
+      message: ' email sent to the manager',
+    };
+  }
 
-  //   return {
-  //     message: ' email sent to the manager',
-  //   };
-  // }
+  async resetPassword(data: resetPasswordDTO) {
+    const tokenRecord = await this.prisma.fitapi_passwordresettoken.findUnique({
+      where: { token: data.resetToken },
+      include: { fitapi_user: true },
+    });
 
-  // async resetPassword(data: resetPasswordDTO) {
-  //   //get the annex
-  //   const annex = await this.annexService.findResetTokenAnnex(data.resetToken);
+    if (!tokenRecord || tokenRecord.is_used) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
 
-  //   if (!annex) {
-  //     {
-  //       throw new BadRequestException('annex does not exists');
-  //     }
-  //   }
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (tokenRecord.created_at < oneHourAgo) {
+      throw new BadRequestException('Reset token has expired');
+    }
 
-  //   //check the passwords matches
-  //   //to be deleted once validation is implemented
-  //   if (!data.password || !data.confirmPassword) {
-  //     throw new BadRequestException(
-  //       'password and confirm Password are not matched',
-  //     );
-  //   }
+    if (data.password !== data.confirmPassword) {
+      throw new BadRequestException(
+        'password and confirm Password are not matched',
+      );
+    }
 
-  //   //update password
-  //   const password: string = await bcrypt.hash(data.password, 11);
+    const hashedPassword = await bcrypt.hash(data.password, 11);
 
-  //   await this.annexService.updateAnnex(annex.annexCode, {
-  //     password,
-  //     resetToken: null,
-  //     resetTokenExpiry: null,
-  //   });
+    await this.prisma.fitapi_user.update({
+      where: { id: tokenRecord.user_id },
+      data: {
+        password: hashedPassword,
+      },
+    });
 
-  //   return {
-  //     message: 'password reset successfully',
-  //   };
-  // }
+    await this.prisma.fitapi_passwordresettoken.update({
+      where: { id: tokenRecord.id },
+      data: {
+        is_used: true,
+      },
+    });
+
+    return {
+      message: 'password reset successfully',
+    };
+  }
 
   async createToken(data: any) {
     const accessToken = this.jwtService.sign({
       user_id: data.user_id,
-      
     }, { expiresIn: '15m' });
 
     const refreshToken = this.jwtService.sign({
