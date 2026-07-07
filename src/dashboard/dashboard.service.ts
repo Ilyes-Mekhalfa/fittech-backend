@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LandingService } from '../landing/landing.service';
-import { SocketGateway } from 'src/socket/socket.gateway'; // 1. Import your WebSockets Gateway
+import { SocketGateway } from 'src/socket/socket.gateway';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class DashboardService {
@@ -10,129 +11,160 @@ export class DashboardService {
   constructor(
     private prismaService: PrismaService,
     private landingService: LandingService,
-    private socketGateway: SocketGateway, // 2. Inject your real-time messaging gateway
+    private redisService: RedisService,
+    private socketGateway: SocketGateway,
   ) {}
 
+  private readonly cacheTtlSeconds = 300;
+
+  private async getCachedValue<T>(key: string, fallback: () => Promise<T>): Promise<T> {
+    try {
+      const cached = await this.redisService.get(key);
+      if (cached) {
+        return JSON.parse(cached) as T;
+      }
+    } catch (error) {
+      this.logger.warn(`Redis read failed for ${key}: ${error instanceof Error ? error.message : error}`);
+    }
+
+    const value = await fallback();
+
+    try {
+      await this.redisService.set(key, JSON.stringify(value), 'EX', this.cacheTtlSeconds);
+    } catch (error) {
+      this.logger.warn(`Redis write failed for ${key}: ${error instanceof Error ? error.message : error}`);
+    }
+
+    return value;
+  }
+
   async getStats() {
-    const { coaches, members, plans } = await this.landingService.getHeroData();
-    const machines = await this.prismaService.fitapi_machine.count();
+    return this.getCachedValue('dashboard:stats', async () => {
+      const { coaches, members, plans } = await this.landingService.getHeroData();
+      const machines = await this.prismaService.fitapi_machine.count();
 
-    const now = new Date();
+      const now = new Date();
 
-    const monthlyRevenue = await this.prismaService.fitapi_payment.aggregate({
-      _sum: {
-        amount: true,
-      },
-      where: {
-        payment_status: 'completed',
-        payment_date: {
-          gte: new Date(now.getFullYear(), now.getMonth(), 1), // first day of current month
-          lt: new Date(now.getFullYear(), now.getMonth() + 1, 1), // first day of next month
+      const monthlyRevenue = await this.prismaService.fitapi_payment.aggregate({
+        _sum: {
+          amount: true,
         },
-      },
-    });
+        where: {
+          payment_status: 'completed',
+          payment_date: {
+            gte: new Date(now.getFullYear(), now.getMonth(), 1),
+            lt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+          },
+        },
+      });
 
-    return {
-      coaches,
-      members,
-      plans,
-      machines,
-      monthlyRevenue: monthlyRevenue._sum.amount || 0,
-    };
+      return {
+        coaches,
+        members,
+        plans,
+        machines,
+        monthlyRevenue: monthlyRevenue._sum.amount || 0,
+      };
+    });
   }
 
   async getCoachStats() {
-    const [activeCoaches, averageRating, totalCourses] = await Promise.all([
-      this.prismaService.fitapi_user.count({
-        where: {
-          role: { in: ['coach', 'COACH'] },
-          is_online: true,
-        },
-      }),
-      this.prismaService.fitapi_coachreview
-        .aggregate({
-          _avg: {
-            rating: true,
-          },
-        })
-        .then((result) => result._avg.rating || 0),
-      this.prismaService.fitapi_course.count(),
-    ]);
-
-    return { activeCoaches, averageRating, totalCourses };
-  }
-
-  async getMemberStats() {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const [activeMembers, newMembers, subscribedMembers, membersGrowth] =
-      await Promise.all([
+    return this.getCachedValue('dashboard:coach-stats', async () => {
+      const [activeCoaches, averageRating, totalCourses] = await Promise.all([
         this.prismaService.fitapi_user.count({
           where: {
-            role: { in: ['member', 'Member'] },
+            role: { in: ['coach', 'COACH'] },
             is_online: true,
           },
         }),
-        // FIX: Changed 'lte' to 'gte' to capture users created *within* the last 30 days
-        this.prismaService.fitapi_user.findMany({
-          where: {
-            role: { in: ['member', 'Member'] },
-            created_at: {
-              gte: thirtyDaysAgo,
+        this.prismaService.fitapi_coachreview
+          .aggregate({
+            _avg: {
+              rating: true,
             },
+          })
+          .then((result) => result._avg.rating || 0),
+        this.prismaService.fitapi_course.count(),
+      ]);
+
+      return { activeCoaches, averageRating, totalCourses };
+    });
+  }
+
+  async getMemberStats() {
+    return this.getCachedValue('dashboard:member-stats', async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [activeMembers, newMembers, subscribedMembers, membersGrowth] =
+        await Promise.all([
+          this.prismaService.fitapi_user.count({
+            where: {
+              role: { in: ['member', 'Member'] },
+              is_online: true,
+            },
+          }),
+          this.prismaService.fitapi_user.findMany({
+            where: {
+              role: { in: ['member', 'Member'] },
+              created_at: {
+                gte: thirtyDaysAgo,
+              },
+            },
+          }),
+          this.prismaService.fitapi_membresubscription.count({
+            where: {
+              status: 'active',
+              end_date: {
+                gte: new Date(),
+              },
+            },
+          }),
+          this.prismaService.fitapi_user.groupBy({
+            by: ['created_at'],
+            where: {
+              role: { in: ['member', 'Member'] },
+            },
+          }),
+        ]);
+
+      return {
+        activeMembers,
+        newMembers: newMembers.length,
+        subscribedMembers,
+        membersGrowth,
+      };
+    });
+  }
+
+  async getPlanStats() {
+    return this.getCachedValue('dashboard:plan-stats', async () => {
+      const [plans, machines] = await Promise.all([
+        this.prismaService.fitapi_subscriptionplan.groupBy({
+          by: ['type'],
+          _count: {
+            type: true,
           },
         }),
-        this.prismaService.fitapi_membresubscription.count({
-          where: {
-            status: 'active',
-            end_date: {
-              gte: new Date(),
-            },
-          },
-        }),
-        this.prismaService.fitapi_user.groupBy({
-          by: ['created_at'],
-          where: {
-            role: { in: ['member', 'Member'] },
+        this.prismaService.fitapi_machine.groupBy({
+          by: ['type'],
+          _count: {
+            type: true,
           },
         }),
       ]);
 
-    return {
-      activeMembers,
-      newMembers: newMembers.length,
-      subscribedMembers,
-      membersGrowth,
-    };
-  }
-
-  async getPlanStats() {
-    const [plans, machines] = await Promise.all([
-      this.prismaService.fitapi_subscriptionplan.groupBy({
-        by: ['type'],
-        _count: {
-          type: true,
-        },
-      }),
-      this.prismaService.fitapi_machine.groupBy({
-        by: ['type'],
-        _count: {
-          type: true,
-        },
-      }),
-    ]);
-
-    return {
-      plans: plans.map((plan) => ({
-        type: plan.type,
-        count: plan._count.type,
-      })),
-      machines: machines.map((machine) => ({
-        type: machine.type,
-        count: machine._count.type,
-      })),
-    };
+      return {
+        plans: plans.map((plan) => ({
+          type: plan.type,
+          count: plan._count.type,
+        })),
+        machines: machines.map((machine) => ({
+          type: machine.type,
+          count: machine._count.type,
+        })),
+      };
+    });
   }
 
   async liveEntrance() {

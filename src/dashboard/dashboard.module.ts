@@ -5,8 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LandingService } from '../landing/landing.service';
 import { PlanService } from '../plan/plan.service';
 import { CoachService } from '../coach/coach.service';
-import { SocketGateway } from 'src/socket/socket.gateway'; // Import your WebSockets Gateway
+import { SocketGateway } from 'src/socket/socket.gateway';
+import { RedisModule } from '../redis/redis.module';
 @Module({
+  imports: [RedisModule],
   providers: [
     DashboardService,
     PrismaService,

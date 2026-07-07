@@ -3,8 +3,10 @@ import { Post, Res, Body } from '@nestjs/common';
 import { loginDTO } from './dto/authentication.dto';
 import { AuthenticationService } from './authentication.service';
 import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('authentication')
+@Throttle({ default: { ttl: 60, limit: 5 } })
 export class AuthenticationController {
   constructor(private authenticationService: AuthenticationService) {}
 
